@@ -221,5 +221,5 @@ Keep responses simple and consistent:
 
 ## 13) Final Hardening Gate
 
-- Use `FINAL_HARDENING_PROMPT.md` as the required end-of-implementation production hardening checklist and release-readiness report template.
+- Use `docs/FINAL_HARDENING_PROMPT.md` as the required end-of-implementation production hardening checklist and release-readiness report template.
 ```
