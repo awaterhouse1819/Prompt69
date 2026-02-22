@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { withAuth } from "next-auth/middleware";
 
 export default withAuth(
-  function middleware(req) {
+  function proxy(req) {
     const isApiRoute = req.nextUrl.pathname.startsWith("/api/");
     const isAuthApiRoute = req.nextUrl.pathname.startsWith("/api/auth");
     const isLoggedIn = Boolean(req.nextauth.token);
