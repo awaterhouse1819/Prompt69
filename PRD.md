@@ -216,4 +216,10 @@ Keep responses simple and consistent:
 // - Analytics/event pipelines (PostHog)
 // - Advanced monitoring (Sentry alerts)
 // - Email workflows (Resend)
+
+---
+
+## 13) Final Hardening Gate
+
+- Use `FINAL_HARDENING_PROMPT.md` as the required end-of-implementation production hardening checklist and release-readiness report template.
 ```
