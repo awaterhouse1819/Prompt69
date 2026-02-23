@@ -34,7 +34,7 @@ Baseline checks (Node 20.19.0):
 - `npm run seed`: **PASS** (DB-connected; idempotent seed upsert completed)
 - `npm test`: **PASS** (DB-connected; all suites passed, including concurrency flows with no skips)
 - `psql "$DATABASE_URL" -c "\\dt"`: **PASS** (4 tables present)
-- `npm audit --json`: **Blocked (Evidence Gap)** (`getaddrinfo ENOTFOUND registry.npmjs.org`)
+- `npm audit --json`: **COMPLETE** (`18` total vulnerabilities: `14 high`, `4 moderate`, `0 critical`; primarily in dev-tooling dependency chains)
 
 ## Severity & Status Model
 Severity criteria:
@@ -51,15 +51,15 @@ Status criteria:
 - `Blocked (Evidence Gap)`: cannot verify due environment/tooling constraint.
 
 ## Executive Summary
-Overall release-readiness status: **READY (with external dependency-audit evidence gap)**.
+Overall release-readiness status: **READY (with dependency triage follow-ups)**.
 
 Findings summary (current):
 - Hardening release-readiness checks: **5 / 5 PASS** (table updated below with code/test/doc evidence).
 - DB-backed validation: **PASS** (`npm run seed`, `npm test` with concurrency suite executed and passing).
-- Remaining evidence gap: dependency audit is still blocked by network restriction in this environment.
+- Dependency audit now has evidence; follow-up remediation/waiver decisions remain for non-critical findings.
 
 Top current blockers:
-1. Re-run `npm audit --json` in network-enabled environment and record triage.
+1. Triage `npm audit --json` findings (14 high / 4 moderate), with owner decisions for patch, upgrade, or risk acceptance.
 2. Add CI gate for DB-backed concurrency tests to keep the race-condition fix enforced.
 3. Add targeted logger-redaction and auth cookie-attribute integration tests.
 
@@ -242,18 +242,24 @@ The findings below were captured before the latest P0/P1/P2 hardening completion
 
 ### AUD-012
 - Category: Dependency Security
-- Severity: **Info**
-- Status: **Blocked (Evidence Gap)**
-- Finding: Dependency vulnerability posture cannot be verified from this environment.
+- Severity: **Medium**
+- Status: **Open**
+- Finding: Dependency vulnerabilities are present in current lockfile graph and require triage decisions.
 - Evidence:
-  - `npm audit --json` failed with DNS resolution error to npm registry audit endpoint.
+  - `npm audit --json` completed successfully (Node `20.19.0`) with:
+    - `14 high`
+    - `4 moderate`
+    - `0 critical`
+  - High-severity chain is dominated by `minimatch` advisories through `eslint`/plugin/transitive tooling packages.
+  - Moderate-severity chain includes `esbuild` via `drizzle-kit` transitive tooling dependencies.
 - Risk/Impact:
-  - Vulnerability state remains unknown.
+  - Dev and CI environments may carry known vulnerable toolchain dependencies until upgrades/waivers are applied.
 - Required Remediation:
-  - Re-run dependency audit in network-enabled CI/local environment and track remediation decisions.
+  - Create a dependency triage record per finding cluster: upgrade path, compatibility impact, and explicit waiver rationale where needed.
+  - Re-run `npm audit --json` after dependency changes and attach delta evidence.
 - Suggested Owner: Platform
 - Suggested Verification Test:
-  - Successful audit run with documented triage.
+  - Updated audit output with reduced/accepted findings and documented decision log.
 
 ### AUD-005
 - Category: Database Delivery
@@ -299,7 +305,7 @@ The findings below were captured before the latest P0/P1/P2 hardening completion
    - No open P0 items from the hardening gate checklist.
 
 2. **P1 (Pre-release quality/security)**
-   - Re-run `npm audit --json` in network-enabled environment and document triage.
+   - Triage current `npm audit --json` findings and execute approved upgrade/waiver decisions.
    - Add targeted redaction tests for `src/lib/logger.ts`.
    - Add auth integration checks for cookie attributes.
 
@@ -375,7 +381,19 @@ src/auth/options.ts
 
 ```bash
 $ npm audit --json
-request to https://registry.npmjs.org/-/npm/v1/security/audits/quick failed, reason: getaddrinfo ENOTFOUND registry.npmjs.org
+{
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 4,
+      "high": 14,
+      "critical": 0,
+      "total": 18
+    }
+  }
+}
+# notable chains: minimatch -> eslint/* (high), esbuild -> drizzle-kit (moderate)
 ```
 
 ### E. Key File Evidence References
