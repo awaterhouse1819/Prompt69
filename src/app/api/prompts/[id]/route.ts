@@ -5,6 +5,8 @@ import { auth } from "@/auth";
 import { db } from "@/db/client";
 import { promptVersions, prompts } from "@/db/schema";
 import { apiError, apiOk } from "@/lib/api-response";
+import { getOrCreateCorrelationIdFromHeaders } from "@/lib/correlation-id";
+import { logger } from "@/lib/logger";
 
 const promptIdSchema = z.string().uuid();
 
@@ -34,17 +36,18 @@ async function getPromptId(context: RouteContext) {
   return parsedId.data;
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const correlationId = getOrCreateCorrelationIdFromHeaders(request.headers);
   const session = await auth();
 
   if (!session?.user) {
-    return apiError("UNAUTHORIZED", "Authentication required", 401);
+    return apiError("UNAUTHORIZED", "Authentication required", 401, { correlationId });
   }
 
   const promptId = await getPromptId(context);
 
   if (!promptId) {
-    return apiError("INVALID_INPUT", "Invalid prompt id", 400);
+    return apiError("INVALID_INPUT", "Invalid prompt id", 400, { correlationId });
   }
 
   try {
@@ -68,10 +71,11 @@ export async function GET(_request: Request, context: RouteContext) {
       .where(eq(prompts.id, promptId));
 
     if (!promptWithVersion) {
-      return apiError("NOT_FOUND", "Prompt not found", 404);
+      return apiError("NOT_FOUND", "Prompt not found", 404, { correlationId });
     }
 
-    return apiOk({
+    return apiOk(
+      {
       prompt: {
         id: promptWithVersion.id,
         title: promptWithVersion.title,
@@ -90,24 +94,27 @@ export async function GET(_request: Request, context: RouteContext) {
             createdAt: promptWithVersion.currentVersionCreatedAt,
           }
         : null,
-    });
+      },
+      { correlationId },
+    );
   } catch (error) {
-    console.error("Failed to load prompt", error);
-    return apiError("INTERNAL_ERROR", "Failed to load prompt", 500);
+    logger.error("Failed to load prompt", { correlationId, error });
+    return apiError("INTERNAL_ERROR", "Failed to load prompt", 500, { correlationId });
   }
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const correlationId = getOrCreateCorrelationIdFromHeaders(request.headers);
   const session = await auth();
 
   if (!session?.user) {
-    return apiError("UNAUTHORIZED", "Authentication required", 401);
+    return apiError("UNAUTHORIZED", "Authentication required", 401, { correlationId });
   }
 
   const promptId = await getPromptId(context);
 
   if (!promptId) {
-    return apiError("INVALID_INPUT", "Invalid prompt id", 400);
+    return apiError("INVALID_INPUT", "Invalid prompt id", 400, { correlationId });
   }
 
   let rawBody: unknown;
@@ -115,13 +122,13 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     rawBody = await request.json();
   } catch {
-    return apiError("INVALID_JSON", "Request body must be valid JSON", 400);
+    return apiError("INVALID_JSON", "Request body must be valid JSON", 400, { correlationId });
   }
 
   const parsed = updatePromptSchema.safeParse(rawBody);
 
   if (!parsed.success) {
-    return apiError("INVALID_INPUT", "Invalid prompt payload", 400);
+    return apiError("INVALID_INPUT", "Invalid prompt payload", 400, { correlationId });
   }
 
   const updateValues: {
@@ -156,27 +163,28 @@ export async function PATCH(request: Request, context: RouteContext) {
       });
 
     if (!updatedPrompt) {
-      return apiError("NOT_FOUND", "Prompt not found", 404);
+      return apiError("NOT_FOUND", "Prompt not found", 404, { correlationId });
     }
 
-    return apiOk(updatedPrompt);
+    return apiOk(updatedPrompt, { correlationId });
   } catch (error) {
-    console.error("Failed to update prompt", error);
-    return apiError("INTERNAL_ERROR", "Failed to update prompt", 500);
+    logger.error("Failed to update prompt", { correlationId, error, promptId });
+    return apiError("INTERNAL_ERROR", "Failed to update prompt", 500, { correlationId });
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
+  const correlationId = getOrCreateCorrelationIdFromHeaders(request.headers);
   const session = await auth();
 
   if (!session?.user) {
-    return apiError("UNAUTHORIZED", "Authentication required", 401);
+    return apiError("UNAUTHORIZED", "Authentication required", 401, { correlationId });
   }
 
   const promptId = await getPromptId(context);
 
   if (!promptId) {
-    return apiError("INVALID_INPUT", "Invalid prompt id", 400);
+    return apiError("INVALID_INPUT", "Invalid prompt id", 400, { correlationId });
   }
 
   try {
@@ -186,12 +194,12 @@ export async function DELETE(_request: Request, context: RouteContext) {
       .returning({ id: prompts.id });
 
     if (!deletedPrompt) {
-      return apiError("NOT_FOUND", "Prompt not found", 404);
+      return apiError("NOT_FOUND", "Prompt not found", 404, { correlationId });
     }
 
-    return apiOk(deletedPrompt);
+    return apiOk(deletedPrompt, { correlationId });
   } catch (error) {
-    console.error("Failed to delete prompt", error);
-    return apiError("INTERNAL_ERROR", "Failed to delete prompt", 500);
+    logger.error("Failed to delete prompt", { correlationId, error, promptId });
+    return apiError("INTERNAL_ERROR", "Failed to delete prompt", 500, { correlationId });
   }
 }

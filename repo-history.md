@@ -1259,3 +1259,48 @@ Reference point for this delta:
 - `?? drizzle/`
 - `?? eslint.config.mjs`
 - `?? scripts/`
+
+---
+
+## Delta Update Since Last `repo-history.md` Update (2026-02-23, feature milestone commit + P0 hardening)
+
+Reference point for this delta:
+- Previous delta capture section: `## Delta Update Since Last repo-history.md Update (2026-02-23, runtime/setup + docs sync)`.
+
+### Git Events Since Last Update
+- `2026-02-23` — Commit `a54ebc6` created on `main` and pushed to `origin/main`:
+  - `feat: implement prompt CRUD, versioning, and test runs`
+  - Includes Milestone 1-3 implementation: prompt CRUD routes/UI, prompt version routes/editor page, OpenAI test-runs API + run panel.
+
+### Hardening Work Added (Current Uncommitted Changes)
+- Implemented correlation ID propagation scaffolding and response header support:
+  - `src/lib/correlation-id.ts`
+  - `src/proxy.ts`
+  - `src/lib/api-response.ts`
+  - API route handlers now pass correlation IDs in success/error responses.
+- Added structured JSON logger with sensitive-field redaction:
+  - `src/lib/logger.ts`
+  - Replaced ad-hoc route/env `console.error` calls with `logger.error`.
+- Added backup/restore + incident quick-step runbook:
+  - `docs/BACKUP_RESTORE_RUNBOOK.md`
+- Updated plan tracking:
+  - Marked Milestone 4 P0 items complete in `plans.md`.
+
+### Validation Status for Current Delta
+- `npm run lint` (Node `20.19.0`): PASS
+- `npm run typecheck` (Node `20.19.0`): PASS
+
+### Current Working Tree Snapshot (at this Delta Capture)
+- `M plans.md`
+- `M repo-history.md`
+- `M src/app/api/prompts/route.ts`
+- `M src/app/api/prompts/[id]/route.ts`
+- `M src/app/api/prompts/[id]/versions/route.ts`
+- `M src/app/api/prompts/[id]/restore/route.ts`
+- `M src/app/api/test-runs/route.ts`
+- `M src/env.ts`
+- `M src/lib/api-response.ts`
+- `M src/proxy.ts`
+- `?? docs/BACKUP_RESTORE_RUNBOOK.md`
+- `?? src/lib/correlation-id.ts`
+- `?? src/lib/logger.ts`

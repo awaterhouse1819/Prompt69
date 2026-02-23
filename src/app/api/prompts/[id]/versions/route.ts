@@ -5,6 +5,8 @@ import { auth } from "@/auth";
 import { db } from "@/db/client";
 import { promptVersions, prompts } from "@/db/schema";
 import { apiError, apiOk } from "@/lib/api-response";
+import { getOrCreateCorrelationIdFromHeaders } from "@/lib/correlation-id";
+import { logger } from "@/lib/logger";
 
 const promptIdSchema = z.string().uuid();
 const createPromptVersionSchema = z.object({
@@ -40,17 +42,18 @@ function isUniqueViolation(error: unknown) {
   return "code" in error && (error as { code?: string }).code === "23505";
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const correlationId = getOrCreateCorrelationIdFromHeaders(request.headers);
   const session = await auth();
 
   if (!session?.user) {
-    return apiError("UNAUTHORIZED", "Authentication required", 401);
+    return apiError("UNAUTHORIZED", "Authentication required", 401, { correlationId });
   }
 
   const promptId = await getPromptId(context);
 
   if (!promptId) {
-    return apiError("INVALID_INPUT", "Invalid prompt id", 400);
+    return apiError("INVALID_INPUT", "Invalid prompt id", 400, { correlationId });
   }
 
   try {
@@ -60,7 +63,7 @@ export async function GET(_request: Request, context: RouteContext) {
       .where(eq(prompts.id, promptId));
 
     if (!promptRow) {
-      return apiError("NOT_FOUND", "Prompt not found", 404);
+      return apiError("NOT_FOUND", "Prompt not found", 404, { correlationId });
     }
 
     const versions = await db
@@ -76,24 +79,25 @@ export async function GET(_request: Request, context: RouteContext) {
       .where(eq(promptVersions.promptId, promptId))
       .orderBy(desc(promptVersions.versionNumber));
 
-    return apiOk(versions);
+    return apiOk(versions, { correlationId });
   } catch (error) {
-    console.error("Failed to load prompt versions", error);
-    return apiError("INTERNAL_ERROR", "Failed to load prompt versions", 500);
+    logger.error("Failed to load prompt versions", { correlationId, error });
+    return apiError("INTERNAL_ERROR", "Failed to load prompt versions", 500, { correlationId });
   }
 }
 
 export async function POST(request: Request, context: RouteContext) {
+  const correlationId = getOrCreateCorrelationIdFromHeaders(request.headers);
   const session = await auth();
 
   if (!session?.user) {
-    return apiError("UNAUTHORIZED", "Authentication required", 401);
+    return apiError("UNAUTHORIZED", "Authentication required", 401, { correlationId });
   }
 
   const promptId = await getPromptId(context);
 
   if (!promptId) {
-    return apiError("INVALID_INPUT", "Invalid prompt id", 400);
+    return apiError("INVALID_INPUT", "Invalid prompt id", 400, { correlationId });
   }
 
   let rawBody: unknown;
@@ -101,13 +105,13 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     rawBody = await request.json();
   } catch {
-    return apiError("INVALID_JSON", "Request body must be valid JSON", 400);
+    return apiError("INVALID_JSON", "Request body must be valid JSON", 400, { correlationId });
   }
 
   const parsed = createPromptVersionSchema.safeParse(rawBody);
 
   if (!parsed.success) {
-    return apiError("INVALID_INPUT", "Invalid prompt version payload", 400);
+    return apiError("INVALID_INPUT", "Invalid prompt version payload", 400, { correlationId });
   }
 
   const normalizedNotes = parsed.data.notes?.trim();
@@ -166,23 +170,27 @@ export async function POST(request: Request, context: RouteContext) {
       });
 
       if (!createdVersion) {
-        return apiError("NOT_FOUND", "Prompt not found", 404);
+        return apiError("NOT_FOUND", "Prompt not found", 404, { correlationId });
       }
 
-      return apiOk(createdVersion, { status: 201 });
+      return apiOk(createdVersion, { status: 201, correlationId });
     } catch (error) {
       if (isUniqueViolation(error) && attempt < 2) {
         continue;
       }
 
       if (isUniqueViolation(error)) {
-        return apiError("CONFLICT", "Failed to create version due to a concurrent update", 409);
+        return apiError("CONFLICT", "Failed to create version due to a concurrent update", 409, {
+          correlationId,
+        });
       }
 
-      console.error("Failed to create prompt version", error);
-      return apiError("INTERNAL_ERROR", "Failed to create prompt version", 500);
+      logger.error("Failed to create prompt version", { correlationId, error, promptId });
+      return apiError("INTERNAL_ERROR", "Failed to create prompt version", 500, { correlationId });
     }
   }
 
-  return apiError("CONFLICT", "Failed to create version due to a concurrent update", 409);
+  return apiError("CONFLICT", "Failed to create version due to a concurrent update", 409, {
+    correlationId,
+  });
 }

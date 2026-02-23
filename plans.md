@@ -9,7 +9,7 @@ Ship v1: prompt CRUD, immutable versions, test runs against OpenAI, and run hist
 - Drizzle migration artifacts are generated (`drizzle/0000_melted_solo.sql` + `drizzle/meta/_journal.json`) and local migrate/apply succeeds.
 - Runtime checks under Node `20.19.0`: `lint`, `typecheck`, and `build` pass.
 - Local PostgreSQL environment is now aligned (`annawaterhouse` role + `prompt69` database), and migrations apply successfully.
-- Remaining feature gaps: hardening quality gates (Milestone 4); default shell runtime is still Node 18.
+- Remaining feature gaps: Milestone 4 P1/P2 quality gates; default shell runtime is still Node 18.
 
 ## Milestone 0: Environment Unblock (Do First)
 - [x] `.env.local` exists and baseline keys are set (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`)
@@ -46,9 +46,9 @@ Ship v1: prompt CRUD, immutable versions, test runs against OpenAI, and run hist
 
 ## Milestone 4: Hardening + Quality Gates (from docs/FINAL_HARDENING_PROMPT.md)
 P0 (release-blocking):
-- [ ] Add backup/restore + incident recovery quick-step runbook docs
-- [ ] Add request correlation ID propagation (`src/proxy.ts` + route handlers + response headers)
-- [ ] Add structured logger with sensitive-field redaction (replace ad-hoc `console.*`)
+- [x] Add backup/restore + incident recovery quick-step runbook docs
+- [x] Add request correlation ID propagation (`src/proxy.ts` + route handlers + response headers)
+- [x] Add structured logger with sensitive-field redaction (replace ad-hoc `console.*`)
 
 P1 (pre-release security/reliability):
 - [ ] Add centralized API error mapper/wrapper to enforce `{ data, error }` contract
