@@ -6,6 +6,7 @@ const envSchema = z.object({
   AUTH_SECRET: z.string().min(32),
   AUTH_ADMIN_EMAIL: z.string().email(),
   AUTH_ADMIN_PASSWORD: z.string().min(8),
+  OPENAI_API_KEY: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse({
@@ -14,6 +15,7 @@ const parsed = envSchema.safeParse({
   AUTH_SECRET: process.env.AUTH_SECRET,
   AUTH_ADMIN_EMAIL: process.env.AUTH_ADMIN_EMAIL,
   AUTH_ADMIN_PASSWORD: process.env.AUTH_ADMIN_PASSWORD,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 });
 
 if (!parsed.success) {

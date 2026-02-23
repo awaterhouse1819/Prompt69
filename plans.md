@@ -5,11 +5,11 @@ Ship v1: prompt CRUD, immutable versions, test runs against OpenAI, and run hist
 
 ## Current Snapshot
 - App foundation is implemented: Next.js app shell, credentials auth, route protection, env validation, Drizzle schema.
-- API surface is not yet implemented beyond auth (`src/app/api/auth/[...nextauth]/route.ts` only).
+- API surface now includes auth + prompt CRUD/version APIs + test-run APIs (`src/app/api/auth/[...nextauth]/route.ts`, `src/app/api/prompts/route.ts`, `src/app/api/prompts/[id]/route.ts`, `src/app/api/prompts/[id]/versions/route.ts`, `src/app/api/prompts/[id]/restore/route.ts`, `src/app/api/test-runs/route.ts`).
 - Drizzle migration artifacts are generated (`drizzle/0000_melted_solo.sql` + `drizzle/meta/_journal.json`) and local migrate/apply succeeds.
 - Runtime checks under Node `20.19.0`: `lint`, `typecheck`, and `build` pass.
 - Local PostgreSQL environment is now aligned (`annawaterhouse` role + `prompt69` database), and migrations apply successfully.
-- Remaining pre-feature gaps: migration artifacts/tooling changes are still uncommitted, default shell runtime is still Node 18, and audit P0 hardening items remain open.
+- Remaining feature gaps: hardening quality gates (Milestone 4); default shell runtime is still Node 18.
 
 ## Milestone 0: Environment Unblock (Do First)
 - [x] `.env.local` exists and baseline keys are set (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`)
@@ -24,25 +24,25 @@ Ship v1: prompt CRUD, immutable versions, test runs against OpenAI, and run hist
 - [x] Add one-step `npm run setup` for runtime precheck + env sanity + DB migrate (`scripts/setup.mjs`)
 
 ## Milestone 1: Prompt CRUD (API + App List Page)
-- [ ] Implement `GET /api/prompts` (order by `updated_at` desc)
-- [ ] Implement `POST /api/prompts` (title, type, tags)
-- [ ] Implement `PATCH /api/prompts/[id]` (title/tags)
-- [ ] Implement `DELETE /api/prompts/[id]`
-- [ ] Update `src/app/app/page.tsx` to render prompt list + create form
+- [x] Implement `GET /api/prompts` (order by `updated_at` desc)
+- [x] Implement `POST /api/prompts` (title, type, tags)
+- [x] Implement `PATCH /api/prompts/[id]` (title/tags)
+- [x] Implement `DELETE /api/prompts/[id]`
+- [x] Update `src/app/app/page.tsx` to render prompt list + create form
 
 ## Milestone 2: Prompt Versions (Editor + History)
-- [ ] Implement `GET /api/prompts/[id]` (prompt + current version)
-- [ ] Implement `GET /api/prompts/[id]/versions`
-- [ ] Implement `POST /api/prompts/[id]/versions` (immutable save, increment version)
-- [ ] Implement `POST /api/prompts/[id]/restore` (set `current_version_id`)
-- [ ] Build `src/app/app/prompts/[id]/page.tsx` editor (content + version history)
+- [x] Implement `GET /api/prompts/[id]` (prompt + current version)
+- [x] Implement `GET /api/prompts/[id]/versions`
+- [x] Implement `POST /api/prompts/[id]/versions` (immutable save, increment version)
+- [x] Implement `POST /api/prompts/[id]/restore` (set `current_version_id`)
+- [x] Build `src/app/app/prompts/[id]/page.tsx` editor (content + version history)
 
 ## Milestone 3: Test Runs (OpenAI Integration)
-- [ ] Install `openai` package
-- [ ] Add `OPENAI_API_KEY` to `src/env.ts`, `.env.example`, and `.env.local`
-- [ ] Implement `POST /api/test-runs` (invoke OpenAI, persist output + usage + status)
-- [ ] Implement `GET /api/test-runs?promptId=...` (newest first)
-- [ ] Add run UI on editor page (model selector + run button + history panel)
+- [x] Install `openai` package
+- [x] Add `OPENAI_API_KEY` to `src/env.ts`, `.env.example`, and `.env.local`
+- [x] Implement `POST /api/test-runs` (invoke OpenAI, persist output + usage + status)
+- [x] Implement `GET /api/test-runs?promptId=...` (newest first)
+- [x] Add run UI on editor page (model selector + run button + history panel)
 
 ## Milestone 4: Hardening + Quality Gates (from docs/FINAL_HARDENING_PROMPT.md)
 P0 (release-blocking):
