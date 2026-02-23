@@ -11,26 +11,19 @@ Method used:
 2. Executed baseline checks under project-required runtime (`node 20.19.0`): typecheck, lint, build.
 3. Verified Drizzle migration generation and local migration apply against PostgreSQL.
 4. Re-ran targeted scans for hardening controls, tests, seed scripts, and repository-layer abstractions.
-5. Updated severity/status assessments and hardening release gate table.
+5. Executed DB-connected validation commands (`npm run seed`, `npm test`) and captured evidence.
+6. Updated severity/status assessments and hardening release gate table.
 
 ## Environment Snapshot
 - Branch: `main`
-- HEAD: `79fa727` (`audit deprecations fixed`)
+- HEAD: `9617d16` (`docs: refresh setup guidance and closeout tracking`)
 - Remote: `origin https://github.com/awaterhouse1819/Prompt69.git`
 - Runtime note:
   - Default shell: `node v18.17.1`, `npm 10.5.2`
   - Project runtime used for checks: `node v20.19.0`, `npm 10.8.2`
 
 Working tree drift at refresh time:
-- `D .eslintrc.json`
-- `M next-env.d.ts`
-- `M package-lock.json`
-- `M package.json`
-- `M plans.md`
-- `M repo-history.md`
-- `M docs/AUDIT_REPORT.md`
-- `?? drizzle/`
-- `?? eslint.config.mjs`
+- Clean before this refresh (`## main...origin/main`).
 
 Baseline checks (Node 20.19.0):
 - `npm run typecheck`: **PASS**
@@ -38,6 +31,8 @@ Baseline checks (Node 20.19.0):
 - `npm run build`: **PASS**
 - `npm run db:generate`: **PASS** (`No schema changes, nothing to migrate`)
 - `npm run db:migrate`: **PASS**
+- `npm run seed`: **PASS** (DB-connected; idempotent seed upsert completed)
+- `npm test`: **FAIL** (DB-connected tests executed; concurrency suite ran with no skips but 1 assertion path failed due duplicate version insert race)
 - `psql "$DATABASE_URL" -c "\\dt"`: **PASS** (4 tables present)
 - `npm audit --json`: **Blocked (Evidence Gap)** (`getaddrinfo ENOTFOUND registry.npmjs.org`)
 
@@ -59,21 +54,18 @@ Status criteria:
 Overall release-readiness status: **NOT READY**.
 
 Findings summary (current):
-- Critical: 1
-- High: 4
-- Medium: 5
-- Low: 1
-- Info: 1
-- Resolved since prior audit: 1 (`AUD-005` migrations generated and applied locally)
+- Hardening release-readiness checks: **5 / 5 PASS** (table updated below with code/test/doc evidence).
+- Remaining release blocker: **concurrency regression under parallel version creation** (`npm test` failure in `tests/concurrency-flows.test.ts`).
+- Additional evidence gap remains for dependency audit due network restriction in this environment.
 
 Top current blockers:
-1. No backup/restore + incident recovery runbooks.
-2. No request correlation ID propagation.
-3. No structured logging/redaction pipeline.
-4. No centralized error mapping guardrail across API handlers.
-5. No contract/concurrency test coverage.
+1. Fix `createNextPromptVersion` race handling to prevent duplicate `(prompt_id, version_number)` under concurrent writes.
+2. Re-run full test suite after repository-level concurrency fix and confirm green.
+3. Re-run `npm audit --json` in network-enabled environment and record triage.
 
-## Findings (Severity Ordered)
+## Findings (Historical Snapshot, Superseded by Release Table)
+
+The findings below were captured before the latest P0/P1/P2 hardening completion and are retained for traceability. Use the updated release-readiness and phase-gate tables in this document as the current source of truth.
 
 ### AUD-001
 - Category: Operations / Resilience
@@ -283,40 +275,37 @@ Top current blockers:
 
 | Item | Status (PASS/FAIL) | Evidence | Gaps / Follow-ups |
 |---|---|---|---|
-| Request correlation ID propagation | **FAIL** | No correlation/request-id code found; `src/proxy.ts` lacks correlation header handling. | Implement ingress generation/propagation + tests. |
-| Structured logging + sensitive-field redaction | **FAIL** | No logger/redaction implementation found; raw `console.error` in `src/env.ts`. | Add structured logger with enforced redaction policy + tests. |
-| Standardized error mapping (no raw stack traces) | **FAIL** | Helper exists (`src/lib/api-response.ts`) but no centralized route wrapper/error mapper. | Implement global mapper and contract tests. |
-| Secure cookie/session settings verification | **FAIL** | `src/auth/options.ts` does not explicitly define cookie hardening policy fields. | Explicitly configure/verify cookie/session attributes and TTL policy. |
-| Backup/restore + incident recovery quick steps documented | **FAIL** | No operational runbook documentation found in project docs. | Add runbook docs with restore drill cadence and owner. |
+| Request correlation ID propagation | **PASS** | Correlation ID ingress/propagation in `src/proxy.ts`; normalization + generation in `src/lib/correlation-id.ts`; route wrapper propagation in `src/lib/api-route.ts`; response header assertion in `tests/api-contract.test.ts`. | Add route-level integration test for proxy-to-handler boundary if stricter evidence is needed. |
+| Structured logging + sensitive-field redaction | **PASS** | Structured JSON logger + key-based redaction in `src/lib/logger.ts`; usage in API/env paths (`src/lib/api-route.ts`, `src/env.ts`); structured error log lines emitted during `npm test` run. | Add dedicated unit tests for redaction edge cases. |
+| Standardized error mapping (no raw stack traces) | **PASS** | Centralized route wrapper + mapper in `src/lib/api-route.ts` with sanitized API payload contract; verified by `tests/api-contract.test.ts` (4 passing tests). | Keep wrapper mandatory for all new route handlers. |
+| Secure cookie/session settings verification | **PASS** | Explicit cookie/session/jwt settings in `src/auth/options.ts` (`HttpOnly`, `Secure` by env, `SameSite`, scoped `Path`, explicit TTL/update age). | Add automated `Set-Cookie` attribute assertions in future auth integration tests. |
+| Backup/restore + incident recovery quick steps documented | **PASS** | Runbook present in `docs/BACKUP_RESTORE_RUNBOOK.md`; rollback guidance in `docs/MIGRATION_ROLLBACK_GUIDANCE.md`. | Schedule and record periodic restore drill evidence. |
 
 ## Migration/Test/Phase-Gate Readiness
 
 | Area | Status | Evidence | Missing / Next Step |
 |---|---|---|---|
-| SQL migrations generated | **PASS** | `drizzle/0000_melted_solo.sql` and `drizzle/meta/*` present; `db:generate` passes. | Commit artifacts and maintain journal in VCS. |
-| Local migrations apply cleanly | **PASS** | `db:migrate` succeeded; `psql` confirms 4 expected tables. | Add reproducible bootstrap/migrate runbook section. |
-| Migration artifacts committed | **PARTIAL** | Files exist but are currently untracked (`?? drizzle/`). | Commit migration files with schema baseline change note. |
-| Rollback guidance documented | **FAIL** | No migration rollback runbook found. | Add rollback playbook and verification steps. |
-| Contract test coverage | **FAIL** | No `*.spec*`/`*.test*` files found. | Implement API contract test suite and gate CI on it. |
-| Concurrency test coverage | **FAIL** | No concurrency tests found. | Add parallel flow tests for versioning/run invariants. |
-| Phase-gate checklist linkage | **PARTIAL** | PRD references hardening doc in `PRD.md:223`. | Enforce checklist as release gate in CI/release workflow. |
+| SQL migrations generated | **PASS** | `drizzle/0000_melted_solo.sql` and `drizzle/meta/*` are in VCS; schema baseline present. | Keep migration journal committed for each schema change. |
+| Local migrations apply cleanly | **PASS** | Prior `db:migrate` evidence plus successful DB-connected `seed` + `test` runs confirms reachable schema/tables. | Re-run migration check in CI with ephemeral DB. |
+| Migration artifacts committed | **PASS** | `drizzle/0000_melted_solo.sql`, `drizzle/meta/0000_snapshot.json`, `drizzle/meta/_journal.json` tracked in git. | None. |
+| Rollback guidance documented | **PASS** | `docs/MIGRATION_ROLLBACK_GUIDANCE.md` is present and versioned. | Keep guidance updated with each migration strategy change. |
+| Contract test coverage | **PASS** | `tests/api-contract.test.ts`; `npm test` output shows all 4 contract tests passing. | Expand coverage as API surface grows. |
+| Concurrency test coverage | **FAIL** | `tests/concurrency-flows.test.ts` executed in DB-connected run (not skipped); one test failed with Postgres unique violation `prompt_versions_prompt_id_version_number_uniq`. | Fix repository concurrency control for version-number allocation and re-run tests to green. |
+| Phase-gate checklist linkage | **PASS** | PRD hardening-gate reference in `PRD.md`; implementation aligns with `docs/FINAL_HARDENING_PROMPT.md` release table items. | Consider CI enforcement as follow-up hardening. |
 
 ## Prioritized Remediation Plan
 
 1. **P0 (Release-blocking)**
-   - Add backup/restore + incident runbooks.
-   - Implement correlation ID propagation end-to-end.
-   - Implement structured logging with redaction.
+   - Fix concurrent version creation race (`createNextPromptVersion`) so parallel saves cannot collide on `(prompt_id, version_number)`.
+   - Re-run `npm test` with DB access and require clean pass for release.
 
 2. **P1 (Pre-release quality/security)**
-   - Add centralized error mapping to enforce `{ data, error }`.
-   - Explicitly harden and test cookie/session settings.
-   - Add and enforce runtime preflight for `.nvmrc` compatibility.
+   - Add targeted redaction tests for `src/lib/logger.ts`.
+   - Add auth integration checks for cookie attributes.
 
 3. **P2 (Stability and maintainability)**
-   - Add contract and concurrency test suites with CI gates.
-   - Add seed script and typed repository layer.
-   - Remove outer PRD code fence and add migration rollback guidance.
+   - Add CI gate for DB-backed concurrency tests.
+   - Re-run dependency audit in network-enabled CI and track remediation.
 
 ## Evidence Appendix (Commands + Outputs)
 
@@ -324,18 +313,9 @@ Top current blockers:
 
 ```bash
 $ git rev-parse --short HEAD && git branch --show-current && git status -sb
-79fa727
+9617d16
 main
 ## main...origin/main
- D .eslintrc.json
- M next-env.d.ts
- M package-lock.json
- M package.json
- M plans.md
- M repo-history.md
- M docs/AUDIT_REPORT.md
-?? drizzle/
-?? eslint.config.mjs
 ```
 
 ```bash
@@ -360,54 +340,39 @@ v20.19.0
 ```
 
 ```bash
-$ npm run typecheck
-PASS_TYPECHECK
-> tsc --noEmit
-
-$ npm run lint
-PASS_LINT
-> eslint . --max-warnings=0
-
-$ npm run build
-PASS_BUILD
-✓ Compiled successfully
-✓ Generating static pages using 19 workers (5/5)
+$ npm run seed
+[runtime-check] OK node 20.19.0 (.nvmrc 20.19.0)
+[seed] user=admin@example.com prompt_id=92412ce2-4565-44e7-87e4-e890726d8b1a current_version_id=ff65a200-8bc6-4e32-94e8-73dbe5d5a53b
 ```
 
 ### C. Database Evidence
 
 ```bash
-$ npm run db:generate
-PASS_DB_GENERATE
-No schema changes, nothing to migrate 😴
-
-$ npm run db:migrate
-PASS_DB_MIGRATE
-[✓] migrations applied successfully!
+$ npm test
+✓ tests/api-contract.test.ts (4 tests)
+❯ tests/concurrency-flows.test.ts (2 tests | 1 failed)
+  × creates sequential prompt versions under concurrent saves
+  ✓ persists concurrent test runs and completion updates
+Test Files  1 failed | 1 passed (2)
+Tests  1 failed | 5 passed (6)
 ```
 
 ```bash
-$ psql "$DATABASE_URL" -c "\dt"
-public | prompt_versions | table | annawaterhouse
-public | prompts         | table | annawaterhouse
-public | test_runs       | table | annawaterhouse
-public | users           | table | annawaterhouse
+$ npm test (failure detail)
+duplicate key value violates unique constraint "prompt_versions_prompt_id_version_number_uniq"
+Key (prompt_id, version_number)=(..., 1) already exists.
 ```
 
 ### D. Security/Hardening/Testing Scans
 
 ```bash
-$ rg -n "correlation|request-id|x-correlation|x-request-id|trace" src
-NO_MATCH: correlation/request-id
-
-$ rg -n "logger|pino|winston|structured|redact|mask|sanitize" src
-NO_MATCH: structured-logger/redaction
-
-$ find . -maxdepth 5 -type f \( -name '*.spec.ts' -o -name '*.test.ts' -o -name '*.spec.tsx' -o -name '*.test.tsx' \) -not -path './node_modules/*'
-# no output
-
-$ find . -maxdepth 5 -type f -iname '*seed*' -not -path './node_modules/*'
-# no output
+$ rg --files tests src/repositories src/lib | rg "api-contract|concurrency|api-route|logger|correlation-id|options.ts"
+tests/api-contract.test.ts
+tests/concurrency-flows.test.ts
+src/lib/api-route.ts
+src/lib/logger.ts
+src/lib/correlation-id.ts
+src/auth/options.ts
 ```
 
 ```bash
@@ -416,13 +381,14 @@ request to https://registry.npmjs.org/-/npm/v1/security/audits/quick failed, rea
 ```
 
 ### E. Key File Evidence References
-- `src/env.ts:3` to `src/env.ts:25`
-- `src/lib/api-response.ts:1` to `src/lib/api-response.ts:25`
-- `src/auth/options.ts:14` to `src/auth/options.ts:74`
-- `src/proxy.ts:1` to `src/proxy.ts:57`
-- `src/db/schema.ts:14` to `src/db/schema.ts:88`
+- `src/proxy.ts:1`
+- `src/lib/correlation-id.ts:1`
+- `src/lib/api-route.ts:1`
+- `src/lib/logger.ts:1`
+- `src/auth/options.ts:1`
+- `tests/api-contract.test.ts:33`
+- `tests/concurrency-flows.test.ts:33`
 - `drizzle/0000_melted_solo.sql`
 - `drizzle/meta/_journal.json`
-- `PRD.md:1`
-- `PRD.md:225`
-- `docs/FINAL_HARDENING_PROMPT.md:7` to `docs/FINAL_HARDENING_PROMPT.md:44`
+- `docs/BACKUP_RESTORE_RUNBOOK.md`
+- `docs/MIGRATION_ROLLBACK_GUIDANCE.md`
