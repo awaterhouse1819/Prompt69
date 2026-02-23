@@ -1,4 +1,3 @@
-```markdown
 # Prompt69 PRD
 
 ## 1) Product Summary
@@ -222,4 +221,3 @@ Keep responses simple and consistent:
 ## 13) Final Hardening Gate
 
 - Use `docs/FINAL_HARDENING_PROMPT.md` as the required end-of-implementation production hardening checklist and release-readiness report template.
-```

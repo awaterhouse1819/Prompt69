@@ -1,7 +1,7 @@
 # Prompt69 Repository History
 
 ## Document Metadata
-- Generated at: 2026-02-21 23:55:47 EST (-0500)
+- Generated at: 2026-02-23 (refreshed + doc sync)
 - Generated from workspace: `/Users/annawaterhouse/Desktop/Code/Prompt69/Prompt-Library`
 - Scope: Repository history from origin + current workspace snapshot + chronological log of user prompts and assistant final responses.
 - Transcript rule: Includes user prompts and assistant **final** outputs only (no intermediary progress updates).
@@ -10,8 +10,11 @@
 
 | SHA | Date (Local) | Author | Branch Context | Files Changed |
 |---|---|---|---|---|
-| `880db1d` | February 21, 2026 16:19:26 EST | `awaterhouse1819 <a.waterhouse1819@gmail.com>` | `main` / `origin/main` | `README.md` (added) |
-| `92532a8` | February 21, 2026 19:55:29 EST | `awaterhouse1819 <a.waterhouse1819@gmail.com>` | `origin/codex/create-formal-policy-spec-in-prd` | `README.md` (modified), `config/model_allowlist.yaml` (added), `docs/PRD.md` (added), `docs/adr/ADR-0001-model-id-policy.md` (added), `docs/api-contract-tests.md` (added) |
+| `79fa727` | February 22, 2026 18:01:10 EST | `Anna Waterhouse <annawaterhouse05@gmail.com>` | `main` / `origin/main` | 5 files changed, 29 insertions, 7 deletions (`audit deprecations fixed`) |
+| `04cecc9` | February 22, 2026 17:36:49 EST | `Anna Waterhouse <annawaterhouse05@gmail.com>` | `main` / `origin/main` | 8 files changed, 1354 insertions, 980 deletions (`Agent Planning Workflow Created`) |
+| `da220d7` | February 22, 2026 16:53:18 EST | `Anna Waterhouse <annawaterhouse05@gmail.com>` | `main` / `origin/main` | 4 files changed, 509 insertions, 1 deletion (`docs: add audit report and hardening gate docs; update PRD and repo history`) |
+| `f4d8943` | February 22, 2026 00:16:41 EST | `Anna Waterhouse <annawaterhouse05@gmail.com>` | `main` / `origin/main` | 31 files changed, 9245 insertions (`Bootstrap project and dependencies`) |
+| `880db1d` | February 21, 2026 16:19:26 EST | `awaterhouse1819 <a.waterhouse1819@gmail.com>` | `main` / `origin/main` | 1 file changed, 1 insertion (`Initial commit`) |
 
 Additional git state at generation time:
 - Active branch: `main`
@@ -23,20 +26,18 @@ Additional git state at generation time:
 ## Current Workspace Snapshot
 
 Working tree snapshot (`git status -sb`) at generation time:
-- `?? .env.example`
-- `?? .eslintrc.json`
-- `?? .gitignore`
-- `?? PRD.md`
-- `?? components.json`
-- `?? drizzle.config.ts`
-- `?? next-env.d.ts`
-- `?? next.config.mjs`
-- `?? package-lock.json`
-- `?? package.json`
-- `?? postcss.config.js`
-- `?? src/`
-- `?? tailwind.config.ts`
-- `?? tsconfig.json`
+- `D .eslintrc.json`
+- `M AGENTS.md`
+- `M PRD.md`
+- `M README.md`
+- `M docs/AUDIT_REPORT.md`
+- `M package-lock.json`
+- `M package.json`
+- `M plans.md`
+- `M repo-history.md`
+- `?? drizzle/`
+- `?? eslint.config.mjs`
+- `?? scripts/`
 
 ## Chronological Session Log
 
@@ -1158,3 +1159,103 @@ Delta captured at:
 - `?? AUDIT_REPORT.md`
 - `?? FINAL_HARDENING_PROMPT.md`
 - `M repo-history.md` (this delta update)
+
+---
+
+## Delta Update Since Last `repo-history.md` Update (2026-02-23)
+
+Reference point for this delta:
+- Previous delta capture timestamp: `2026-02-22 16:49:40 EST (-0500)`.
+
+### Git State
+- No new commits were created in this update cycle.
+- Current HEAD remains:
+  - `79fa727` on `main` / `origin/main`.
+
+### Environment + Tooling Fixes Verified
+- Node runtime compatibility was aligned for project commands:
+  - Default shell remains `node v18.17.1`.
+  - Project checks were run under `.nvmrc` target `node v20.19.0`.
+- Lint pipeline was updated for Next.js 16 + ESLint flat config:
+  - `package.json` script changed from `next lint` to `eslint . --max-warnings=0`.
+  - Added `eslint.config.mjs`.
+  - Removed `.eslintrc.json`.
+  - Updated lockfile/dependency resolution (`eslint` toolchain).
+
+### Database Migration State Verified
+- Generated migration artifacts exist in repository:
+  - `drizzle/0000_melted_solo.sql`
+  - `drizzle/meta/0000_snapshot.json`
+  - `drizzle/meta/_journal.json`
+- Local migration execution was verified against `prompt69`:
+  - `npm run db:migrate` succeeded.
+  - Postgres tables confirmed: `users`, `prompts`, `prompt_versions`, `test_runs`.
+
+### Verification Commands (Latest Cycle)
+- `npm run typecheck` (Node 20.19.0): PASS
+- `npm run lint` (Node 20.19.0): PASS
+- `npm run build` (Node 20.19.0): PASS
+- `npm run db:generate` (with env loaded): PASS (`No schema changes, nothing to migrate`)
+- `npm run db:migrate` (with env loaded): PASS
+
+### Documentation Updated in This Cycle
+- `plans.md` updated to mark Milestone 0 environment unblock complete and reflect current blockers/next steps.
+- `repo-history.md` refreshed (metadata/timeline/worktree snapshot + this delta).
+- `docs/AUDIT_REPORT.md` refreshed to current evidence and status.
+
+### Current Working Tree Snapshot (at 2026-02-23 Delta Capture)
+- `D .eslintrc.json`
+- `M next-env.d.ts`
+- `M package-lock.json`
+- `M package.json`
+- `M plans.md`
+- `M repo-history.md`
+- `M docs/AUDIT_REPORT.md`
+- `?? drizzle/`
+- `?? eslint.config.mjs`
+
+---
+
+## Delta Update Since Last `repo-history.md` Update (2026-02-23, runtime/setup + docs sync)
+
+Reference point for this delta:
+- Previous delta capture section: `## Delta Update Since Last repo-history.md Update (2026-02-23)`.
+
+### Git State
+- No new commits were created in this update cycle.
+- Current HEAD remains:
+  - `79fa727` on `main` / `origin/main`.
+
+### Runtime + Setup Workflow Additions
+- Added runtime preflight script:
+  - `scripts/check-runtime.mjs`
+  - Enforces exact `.nvmrc` Node version match before core commands.
+- Added one-step setup script:
+  - `scripts/setup.mjs`
+  - Validates `.env.local` required keys and runs `db:migrate`.
+- `package.json` scripts were updated to include:
+  - `runtime:check`
+  - `setup`
+  - `pre*` runtime hooks on core commands (`dev`, `build`, `lint`, `typecheck`, `db:*`, `start`).
+- `README.md` runtime section was expanded with `npm run setup` guidance.
+
+### Documentation Sync Updates
+- `plans.md` updated to mark runtime preflight/setup milestone item complete.
+- `docs/AUDIT_REPORT.md` refreshed to current evidence and corrected path references.
+- `AGENTS.md` corrected route-protection source path:
+  - from `src/middleware.ts`
+  - to `src/proxy.ts`.
+
+### Current Working Tree Snapshot (at latest 2026-02-23 Delta Capture)
+- `D .eslintrc.json`
+- `M AGENTS.md`
+- `M PRD.md`
+- `M README.md`
+- `M docs/AUDIT_REPORT.md`
+- `M package-lock.json`
+- `M package.json`
+- `M plans.md`
+- `M repo-history.md`
+- `?? drizzle/`
+- `?? eslint.config.mjs`
+- `?? scripts/`

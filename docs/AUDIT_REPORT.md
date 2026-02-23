@@ -1,60 +1,76 @@
 # Audit Report
 
 ## Scope & Method
-- Audit timestamp: **2026-02-22 16:44:41 EST (-0500)**.
+- Audit refresh date: **2026-02-23**.
 - Scope: **Code + PRD + hardening + ops gaps** for current repository state.
-- Audit objective: produce a single evidence-backed release-readiness report with severity-ranked findings.
+- Objective: maintain an evidence-backed release-readiness report with severity-ranked findings.
 - Repository audited: `/Users/annawaterhouse/Desktop/Code/Prompt69/Prompt-Library`.
 
 Method used:
-1. Captured git/workspace snapshot (branch, commit, remotes, working tree).
-2. Executed baseline checks (`typecheck`, `lint`, `build` without env, `build` with env).
-3. Performed targeted scans for hardening controls, migrations, seed/repository layers, tests, and runbooks.
-4. Mapped findings to fixed severity/status model and hardening release gate.
+1. Captured git/workspace snapshot (branch, commit, remotes, working tree drift).
+2. Executed baseline checks under project-required runtime (`node 20.19.0`): typecheck, lint, build.
+3. Verified Drizzle migration generation and local migration apply against PostgreSQL.
+4. Re-ran targeted scans for hardening controls, tests, seed scripts, and repository-layer abstractions.
+5. Updated severity/status assessments and hardening release gate table.
 
 ## Environment Snapshot
 - Branch: `main`
-- HEAD: `f4d8943` (`Bootstrap project and dependencies`)
+- HEAD: `79fa727` (`audit deprecations fixed`)
 - Remote: `origin https://github.com/awaterhouse1819/Prompt69.git`
-- Working tree drift at audit time:
-  - `M PRD.md`
-  - `?? FINAL_HARDENING_PROMPT.md`
+- Runtime note:
+  - Default shell: `node v18.17.1`, `npm 10.5.2`
+  - Project runtime used for checks: `node v20.19.0`, `npm 10.8.2`
 
-Baseline checks:
+Working tree drift at refresh time:
+- `D .eslintrc.json`
+- `M next-env.d.ts`
+- `M package-lock.json`
+- `M package.json`
+- `M plans.md`
+- `M repo-history.md`
+- `M docs/AUDIT_REPORT.md`
+- `?? drizzle/`
+- `?? eslint.config.mjs`
+
+Baseline checks (Node 20.19.0):
 - `npm run typecheck`: **PASS**
 - `npm run lint`: **PASS**
-- `npm run build` (without env): **FAIL** (expected fail-fast env validation)
-- `npm run build` (with required env vars): **PASS**
-- `npm audit --json`: **Blocked (Evidence Gap)** due DNS/network resolution failure.
+- `npm run build`: **PASS**
+- `npm run db:generate`: **PASS** (`No schema changes, nothing to migrate`)
+- `npm run db:migrate`: **PASS**
+- `psql "$DATABASE_URL" -c "\\dt"`: **PASS** (4 tables present)
+- `npm audit --json`: **Blocked (Evidence Gap)** (`getaddrinfo ENOTFOUND registry.npmjs.org`)
 
 ## Severity & Status Model
 Severity criteria:
 - `Critical`: release-blocking operational/security/data-loss risk.
 - `High`: major production-readiness gap with significant reliability/security impact.
-- `Medium`: important capability or quality gap; should be remediated before scaling/GA.
-- `Low`: non-blocking but should be corrected for maintainability/governance.
+- `Medium`: important capability/quality gap; should be remediated before GA.
+- `Low`: non-blocking but should be corrected for governance/maintainability.
 - `Info`: informational or environment-limited observation.
 
 Status criteria:
 - `Open`: confirmed gap with no implemented control.
 - `Partially Addressed`: baseline exists, but not complete against requirement.
+- `Resolved`: implemented and evidence-verified.
 - `Blocked (Evidence Gap)`: cannot verify due environment/tooling constraint.
 
 ## Executive Summary
 Overall release-readiness status: **NOT READY**.
 
-Findings summary:
+Findings summary (current):
 - Critical: 1
-- High: 5
-- Medium: 4
+- High: 4
+- Medium: 5
 - Low: 1
-- Info: 2
+- Info: 1
+- Resolved since prior audit: 1 (`AUD-005` migrations generated and applied locally)
 
-Top blockers:
-1. No backup/restore + incident runbooks.
+Top current blockers:
+1. No backup/restore + incident recovery runbooks.
 2. No request correlation ID propagation.
 3. No structured logging/redaction pipeline.
-4. No migration artifacts despite Drizzle schema/scripts.
+4. No centralized error mapping guardrail across API handlers.
 5. No contract/concurrency test coverage.
 
 ## Findings (Severity Ordered)
@@ -65,16 +81,15 @@ Top blockers:
 - Status: **Open**
 - Finding: Backup/restore and incident recovery runbooks are not implemented.
 - Evidence:
-  - `FINAL_HARDENING_PROMPT.md:27` requires documented backup/restore + incident quick steps.
-  - `README.md:1` has no runbook or ops instructions.
-  - Search results include requirement text only, not runnable runbooks.
+  - Requirement exists in `docs/FINAL_HARDENING_PROMPT.md:27` to `docs/FINAL_HARDENING_PROMPT.md:29`.
+  - No runbook content found in `README.md` or `docs/` beyond requirement text.
 - Risk/Impact:
-  - Data-loss recovery and outage response are undefined for on-call execution.
+  - Data-loss recovery and outage response remain undefined for responders.
 - Required Remediation:
-  - Add runbooks with owner, cadence, storage location, encryption expectations, test-restore cadence, and outage quick steps.
+  - Add runbooks with owner, cadence, storage/encryption policy, test-restore frequency, and outage quick steps.
 - Suggested Owner: Platform/Backend
 - Suggested Verification Test:
-  - Time-boxed tabletop restore drill using documented commands and success criteria.
+  - Time-boxed restore drill from documented backup artifact.
 
 ### AUD-002
 - Category: Observability
@@ -83,14 +98,14 @@ Top blockers:
 - Finding: Request correlation ID propagation is missing.
 - Evidence:
   - No correlation/request-id implementation found in source scan.
-  - `src/middleware.ts:1` to `src/middleware.ts:57` does not generate/propagate a correlation ID header.
+  - `src/proxy.ts:1` to `src/proxy.ts:57` has auth gating but no `x-correlation-id` generation/propagation.
 - Risk/Impact:
-  - Incident debugging and cross-service traceability are impaired.
+  - Incident debugging and request traceability are impaired.
 - Required Remediation:
-  - Generate/accept correlation ID at ingress, attach to request context, logs, and response headers.
+  - Generate/accept correlation ID at ingress and return in response headers; thread through handler logging.
 - Suggested Owner: Backend
 - Suggested Verification Test:
-  - Integration test asserting inbound/outbound `x-correlation-id` propagation across middleware + route handlers.
+  - Integration test asserting inbound/outbound `x-correlation-id` behavior.
 
 ### AUD-003
 - Category: Observability / Security
@@ -98,49 +113,32 @@ Top blockers:
 - Status: **Open**
 - Finding: Structured logging with sensitive-field redaction is not implemented.
 - Evidence:
-  - No logger/redaction implementation found in source scan.
-  - `src/env.ts:21` uses direct `console.error` with potential structured control gap.
+  - No structured logger/redaction implementation found in source scan.
+  - `src/env.ts:21` uses raw `console.error`.
 - Risk/Impact:
-  - Inconsistent logs and risk of sensitive data leakage under debug/error paths.
+  - Inconsistent logs and potential sensitive data leakage.
 - Required Remediation:
-  - Introduce a structured logger (JSON), global redaction policy, and enforce logger usage.
+  - Introduce structured logger, enforce redaction policy, and replace ad-hoc console logging.
 - Suggested Owner: Backend/Platform
 - Suggested Verification Test:
-  - Unit tests validating redaction of secrets/tokens/session IDs in success + error logs.
+  - Unit tests confirming redaction of tokens/secrets/session identifiers.
 
 ### AUD-004
 - Category: API Reliability / Security
 - Severity: **High**
 - Status: **Partially Addressed**
-- Finding: API response contract exists but global standardized exception mapping is not enforced.
+- Finding: API response contract exists, but centralized exception mapping is not enforced.
 - Evidence:
-  - Contract helper present: `src/lib/api-response.ts:1` to `src/lib/api-response.ts:25`.
-  - Middleware manually returns contract-shaped unauthorized responses: `src/middleware.ts:14` to `src/middleware.ts:24`.
-  - Only auth route exists (`src/app/api/auth/[...nextauth]/route.ts:1` to `src/app/api/auth/[...nextauth]/route.ts:7`) and no global exception mapper layer is defined.
+  - Contract helpers exist in `src/lib/api-response.ts:1` to `src/lib/api-response.ts:25`.
+  - Unauthorized API response shape is manually handled in `src/proxy.ts:14` to `src/proxy.ts:24`.
+  - Only auth route exists (`src/app/api/auth/[...nextauth]/route.ts:1` to `src/app/api/auth/[...nextauth]/route.ts:7`); no shared route wrapper/error mapper found.
 - Risk/Impact:
-  - Future route handlers can leak inconsistent error shapes or internals without centralized guardrails.
+  - Future route handlers can drift from `{ data, error }` or expose internals.
 - Required Remediation:
-  - Add centralized error mapper/wrapper for route handlers to enforce `{ data, error }` contract and internal-only diagnostics.
+  - Add centralized error mapper/wrapper for route handlers with sanitized external responses.
 - Suggested Owner: Backend
 - Suggested Verification Test:
-  - Contract tests for representative error classes to ensure no stack/SQL internals are exposed.
-
-### AUD-005
-- Category: Database Delivery
-- Severity: **High**
-- Status: **Open**
-- Finding: Drizzle schema exists, but migration artifacts are missing.
-- Evidence:
-  - Migration scripts configured: `package.json:12` to `package.json:14`.
-  - Schema present: `src/db/schema.ts:14` to `src/db/schema.ts:88`.
-  - Migration output directory missing (`No drizzle/ migration output directory found.`).
-- Risk/Impact:
-  - Schema changes are not reproducibly versioned/applied across environments.
-- Required Remediation:
-  - Generate and commit SQL migrations + migration journal.
-- Suggested Owner: Backend
-- Suggested Verification Test:
-  - Apply migrations to clean DB and verify resulting schema objects/indexes.
+  - Contract tests for representative domain/internal failures.
 
 ### AUD-006
 - Category: Quality Gates
@@ -148,16 +146,15 @@ Top blockers:
 - Status: **Open**
 - Finding: Contract test suite is missing.
 - Evidence:
-  - PRD defines v1 API surface at `PRD.md:125` to `PRD.md:151`.
-  - Source has only auth route handler file under `src/app/api`.
-  - No test files found (`*.spec*`/`*.test*`).
+  - PRD API surface defined in `PRD.md:125` to `PRD.md:151`.
+  - No test files found (`*.spec*` / `*.test*`) in repository source.
 - Risk/Impact:
   - API contract regressions can ship undetected.
 - Required Remediation:
-  - Add contract tests for auth endpoints now; extend as prompt/test-run endpoints are implemented.
+  - Add contract tests for current auth route, then extend as API surface grows.
 - Suggested Owner: Backend QA/Backend
 - Suggested Verification Test:
-  - CI gate on contract test suite execution with snapshot/shape assertions.
+  - CI gate requiring contract test pass.
 
 ### AUD-007
 - Category: Quality Gates
@@ -165,14 +162,14 @@ Top blockers:
 - Status: **Open**
 - Finding: Concurrency test coverage is missing.
 - Evidence:
-  - No test files found (`*.spec*`/`*.test*`) in repository source.
+  - No concurrency-focused tests found in repository source.
 - Risk/Impact:
-  - Race conditions around versioning/runs can emerge undetected as endpoints are added.
+  - Race conditions may emerge undetected in versioning/run flows.
 - Required Remediation:
-  - Add concurrency-focused integration tests for create-version and test-run flows.
+  - Add parallel request integration tests for version/run invariants.
 - Suggested Owner: Backend
 - Suggested Verification Test:
-  - Parallel request test harness validating invariant preservation (e.g., version uniqueness).
+  - Concurrent execution test harness with invariant assertions.
 
 ### AUD-008
 - Category: Database Bootstrapping
@@ -180,14 +177,14 @@ Top blockers:
 - Status: **Open**
 - Finding: Seed script for single-user bootstrap is missing.
 - Evidence:
-  - No seed script files found.
+  - No project seed script files found.
 - Risk/Impact:
-  - Environment bootstrap is manual and inconsistent.
+  - Environment bootstrap remains manual and inconsistent.
 - Required Remediation:
-  - Add deterministic seed script for initial single user and baseline data.
+  - Add deterministic, idempotent seed command for baseline user data.
 - Suggested Owner: Backend
 - Suggested Verification Test:
-  - Seed command run on clean DB; assert user record exists and is idempotent.
+  - Seed command repeat-run consistency checks.
 
 ### AUD-009
 - Category: Architecture
@@ -195,15 +192,15 @@ Top blockers:
 - Status: **Open**
 - Finding: Typed repository helper layer is missing.
 - Evidence:
-  - No repository helper files found in `src/`.
-  - Direct DB schema/client exist (`src/db/schema.ts`, `src/db/client.ts`) without repository abstraction.
+  - No repository helper modules found under `src/`.
+  - Data access is currently direct through `src/db/client.ts` + `src/db/schema.ts`.
 - Risk/Impact:
-  - Data access patterns may become inconsistent and harder to test.
+  - Data access patterns can fragment and become harder to test.
 - Required Remediation:
   - Add typed repository modules per aggregate (`users`, `prompts`, `promptVersions`, `testRuns`).
 - Suggested Owner: Backend
 - Suggested Verification Test:
-  - Unit tests for repository query contracts and return types.
+  - Unit tests for repository return contracts and query behavior.
 
 ### AUD-010
 - Category: Security / Session
@@ -211,114 +208,134 @@ Top blockers:
 - Status: **Partially Addressed**
 - Finding: Session/cookie hardening is not explicitly configured and verified.
 - Evidence:
-  - Auth config defines JWT strategy but no explicit cookie policy fields:
-    - `src/auth/options.ts:14` to `src/auth/options.ts:21`
-    - no explicit `cookies`, `useSecureCookies`, or explicit TTL policy in config.
+  - JWT strategy present, but explicit cookie policy fields are absent in `src/auth/options.ts:14` to `src/auth/options.ts:21`.
 - Risk/Impact:
-  - Security posture relies on library defaults rather than explicit policy and tests.
+  - Security posture depends on library defaults instead of explicit policy + tests.
 - Required Remediation:
-  - Explicitly configure cookie/session security options and environment-aware secure behavior.
+  - Explicitly configure and test cookie/session attributes (`HttpOnly`, `Secure`, `SameSite`, TTL/rotation policy).
 - Suggested Owner: Backend/Security
 - Suggested Verification Test:
-  - Automated assertions on `Set-Cookie` attributes in dev and production modes.
+  - Automated assertions on `Set-Cookie` attributes in dev/prod modes.
+
+### AUD-013
+- Category: Tooling / Operations
+- Severity: **Medium**
+- Status: **Open**
+- Finding: Default shell runtime is below project requirement and can cause false-negative failures.
+- Evidence:
+  - Default shell reports `node v18.17.1`; project requires `20.19.0` in `.nvmrc`.
+  - Checks only pass after explicit `nvm use 20.19.0`.
+- Risk/Impact:
+  - Contributors may run failing checks/builds when they forget runtime switch.
+- Required Remediation:
+  - Add runtime preflight (`node -v`) to scripts/README or enforce via shell tooling (`direnv`/`nvm` auto-use).
+- Suggested Owner: Platform/Developer Experience
+- Suggested Verification Test:
+  - Preflight command fails fast when runtime does not match `.nvmrc`.
 
 ### AUD-011
 - Category: Documentation / Governance
 - Severity: **Low**
 - Status: **Partially Addressed**
-- Finding: PRD is wrapped in a top-level fenced markdown code block, reducing parseability for tooling.
+- Finding: PRD remains wrapped in a top-level fenced markdown code block.
 - Evidence:
-  - Opening fence at `PRD.md:1` and closing fence at `PRD.md:225`.
+  - Opening fence at `PRD.md:1` and closing top-level fence at `PRD.md:225`.
 - Risk/Impact:
-  - Automated parsers/checkers may treat entire PRD as code text, reducing structure-aware processing.
+  - Tooling may treat the full PRD as code text and lose structure awareness.
 - Required Remediation:
-  - Remove outer fence and keep native Markdown sections.
+  - Remove outer fence and keep native Markdown headings.
 - Suggested Owner: Product/Engineering
 - Suggested Verification Test:
-  - Markdown linter + parser successfully identifies headings/sections.
+  - Markdown parser/linter validates heading structure.
 
 ### AUD-012
 - Category: Dependency Security
 - Severity: **Info**
 - Status: **Blocked (Evidence Gap)**
-- Finding: Dependency vulnerability posture cannot be assessed from this environment.
+- Finding: Dependency vulnerability posture cannot be verified from this environment.
 - Evidence:
-  - `npm audit --json` failed with DNS resolution error to npm audit endpoint.
+  - `npm audit --json` failed with DNS resolution error to npm registry audit endpoint.
 - Risk/Impact:
-  - Unknown vulnerability exposure until audit can run in network-enabled environment.
+  - Vulnerability state remains unknown.
 - Required Remediation:
-  - Re-run dependency audit in CI or network-enabled local environment and triage findings.
+  - Re-run dependency audit in network-enabled CI/local environment and track remediation decisions.
 - Suggested Owner: Platform
 - Suggested Verification Test:
-  - Successful `npm audit` run with tracked remediation decisions.
+  - Successful audit run with documented triage.
 
-### AUD-013
-- Category: Build/Operations
-- Severity: **Info**
-- Status: **Partially Addressed**
-- Finding: Build is fail-fast on missing env vars (works as safeguard, but requires explicit operator workflow).
+### AUD-005
+- Category: Database Delivery
+- Severity: **High**
+- Status: **Resolved**
+- Finding: Drizzle migration artifacts and local migration apply are now implemented.
 - Evidence:
-  - Without env vars, build fails with validation error.
-  - With required env vars set, build succeeds.
-  - Env requirements documented: `.env.example:1` to `.env.example:4`, validated by `src/env.ts:3` to `src/env.ts:25`.
-- Risk/Impact:
-  - Misconfigured environments fail early (good), but deployment workflow must ensure env provisioning.
-- Required Remediation:
-  - Document environment provisioning steps for each target environment.
-- Suggested Owner: Platform
-- Suggested Verification Test:
-  - CI/CD preflight that checks required env keys before build/deploy.
+  - Migration files present:
+    - `drizzle/0000_melted_solo.sql`
+    - `drizzle/meta/0000_snapshot.json`
+    - `drizzle/meta/_journal.json`
+  - `npm run db:generate` passes.
+  - `npm run db:migrate` passes.
+  - `psql "$DATABASE_URL" -c "\\dt"` confirms expected tables.
+- Follow-up:
+  - Commit migration artifacts to VCS and add rollback guidance document.
 
 ## Release Readiness Report
 
 | Item | Status (PASS/FAIL) | Evidence | Gaps / Follow-ups |
 |---|---|---|---|
-| Request correlation ID propagation | **FAIL** | No correlation/request-id implementation found in source scan; `src/middleware.ts` has no correlation header handling. | Implement ingress correlation ID generation/propagation and add tests. |
-| Structured logging + sensitive-field redaction | **FAIL** | No logger/redaction implementation found; only raw `console.error` in `src/env.ts:21`. | Introduce structured logger with enforced redaction policy and tests. |
-| Standardized error mapping (no raw stack traces) | **FAIL** | `src/lib/api-response.ts` provides helpers, but no global route wrapper/error mapper; only middleware manual mapping. | Add centralized error mapper and contract tests for failure cases. |
-| Secure cookie/session settings verification | **FAIL** | `src/auth/options.ts` uses JWT session strategy but does not explicitly define cookie hardening policy fields. | Explicitly configure secure cookie/session policy and verify with response-header tests. |
-| Backup/restore + incident recovery quick steps documented | **FAIL** | No runbook docs found in project; only requirement text in `FINAL_HARDENING_PROMPT.md`. | Add operational runbooks with owner/cadence/restore drill policy. |
+| Request correlation ID propagation | **FAIL** | No correlation/request-id code found; `src/proxy.ts` lacks correlation header handling. | Implement ingress generation/propagation + tests. |
+| Structured logging + sensitive-field redaction | **FAIL** | No logger/redaction implementation found; raw `console.error` in `src/env.ts`. | Add structured logger with enforced redaction policy + tests. |
+| Standardized error mapping (no raw stack traces) | **FAIL** | Helper exists (`src/lib/api-response.ts`) but no centralized route wrapper/error mapper. | Implement global mapper and contract tests. |
+| Secure cookie/session settings verification | **FAIL** | `src/auth/options.ts` does not explicitly define cookie hardening policy fields. | Explicitly configure/verify cookie/session attributes and TTL policy. |
+| Backup/restore + incident recovery quick steps documented | **FAIL** | No operational runbook documentation found in project docs. | Add runbook docs with restore drill cadence and owner. |
 
 ## Migration/Test/Phase-Gate Readiness
 
 | Area | Status | Evidence | Missing / Next Step |
 |---|---|---|---|
-| SQL migrations generated and committed | **FAIL** | `package.json` has drizzle commands, but no `drizzle/` directory or migration SQL files. | Run generation, commit migrations, verify on clean DB. |
-| Rollback guidance documented | **FAIL** | No migration rollback document/runbook found. | Add rollback playbook for migration failures. |
+| SQL migrations generated | **PASS** | `drizzle/0000_melted_solo.sql` and `drizzle/meta/*` present; `db:generate` passes. | Commit artifacts and maintain journal in VCS. |
+| Local migrations apply cleanly | **PASS** | `db:migrate` succeeded; `psql` confirms 4 expected tables. | Add reproducible bootstrap/migrate runbook section. |
+| Migration artifacts committed | **PARTIAL** | Files exist but are currently untracked (`?? drizzle/`). | Commit migration files with schema baseline change note. |
+| Rollback guidance documented | **FAIL** | No migration rollback runbook found. | Add rollback playbook and verification steps. |
 | Contract test coverage | **FAIL** | No `*.spec*`/`*.test*` files found. | Implement API contract test suite and gate CI on it. |
-| Concurrency test coverage | **FAIL** | No concurrency test files/cases found. | Add parallel execution tests for versioning/run lifecycle invariants. |
-| Phase-gate checklist linkage | **PARTIAL** | `PRD.md:222` references `FINAL_HARDENING_PROMPT.md`. | Convert checklist reference into enforced release gate in CI/release process. |
+| Concurrency test coverage | **FAIL** | No concurrency tests found. | Add parallel flow tests for versioning/run invariants. |
+| Phase-gate checklist linkage | **PARTIAL** | PRD references hardening doc in `PRD.md:223`. | Enforce checklist as release gate in CI/release workflow. |
 
 ## Prioritized Remediation Plan
 
 1. **P0 (Release-blocking)**
-   - Implement backup/restore + incident runbooks.
+   - Add backup/restore + incident runbooks.
    - Implement correlation ID propagation end-to-end.
-   - Introduce structured logging with redaction.
+   - Implement structured logging with redaction.
 
 2. **P1 (Pre-release quality/security)**
-   - Implement global error mapping to `{ data, error }` contract.
-   - Explicitly harden and test cookie/session security settings.
-   - Generate/commit migrations and define rollback guidance.
+   - Add centralized error mapping to enforce `{ data, error }`.
+   - Explicitly harden and test cookie/session settings.
+   - Add and enforce runtime preflight for `.nvmrc` compatibility.
 
 3. **P2 (Stability and maintainability)**
+   - Add contract and concurrency test suites with CI gates.
    - Add seed script and typed repository layer.
-   - Add contract and concurrency tests with CI gates.
-   - Remove top-level PRD code fence for tooling compatibility.
+   - Remove outer PRD code fence and add migration rollback guidance.
 
 ## Evidence Appendix (Commands + Outputs)
 
 ### A. Repository Snapshot
 
 ```bash
-$ git rev-parse --short HEAD && git branch --show-current && git status -sb && git log --oneline -n 3
-f4d8943
+$ git rev-parse --short HEAD && git branch --show-current && git status -sb
+79fa727
 main
 ## main...origin/main
- M PRD.md
-?? FINAL_HARDENING_PROMPT.md
-f4d8943 Bootstrap project and dependencies
-880db1d Initial commit
+ D .eslintrc.json
+ M next-env.d.ts
+ M package-lock.json
+ M package.json
+ M plans.md
+ M repo-history.md
+ M docs/AUDIT_REPORT.md
+?? drizzle/
+?? eslint.config.mjs
 ```
 
 ```bash
@@ -327,88 +344,85 @@ origin  https://github.com/awaterhouse1819/Prompt69.git (fetch)
 origin  https://github.com/awaterhouse1819/Prompt69.git (push)
 ```
 
-### B. Build/Quality Commands
+### B. Runtime + Build/Quality Commands
+
+```bash
+$ node -v && npm -v
+v18.17.1
+10.5.2
+
+$ cat .nvmrc
+20.19.0
+
+$ nvm use 20.19.0 && node -v && npm -v
+v20.19.0
+10.8.2
+```
 
 ```bash
 $ npm run typecheck
-> prompt-library@0.1.0 typecheck
+PASS_TYPECHECK
 > tsc --noEmit
-```
 
-```bash
 $ npm run lint
-> prompt-library@0.1.0 lint
-> next lint
-✔ No ESLint warnings or errors
-```
+PASS_LINT
+> eslint . --max-warnings=0
 
-```bash
 $ npm run build
-...Invalid environment variables {
-  DATABASE_URL: [ 'Invalid input: expected string, received undefined' ],
-  AUTH_SECRET: [ 'Invalid input: expected string, received undefined' ],
-  AUTH_ADMIN_EMAIL: [ 'Invalid input: expected string, received undefined' ],
-  AUTH_ADMIN_PASSWORD: [ 'Invalid input: expected string, received undefined' ]
-}
-> Build error occurred
-Error: Failed to collect page data for /_not-found
-```
-
-```bash
-$ DATABASE_URL=... AUTH_SECRET=... AUTH_ADMIN_EMAIL=... AUTH_ADMIN_PASSWORD=... npm run build
+PASS_BUILD
 ✓ Compiled successfully
-✓ Generating static pages (6/6)
+✓ Generating static pages using 19 workers (5/5)
 ```
 
-### C. Security/Hardening/Testing Scans
+### C. Database Evidence
 
 ```bash
-$ npm audit --json
-npm WARN audit request ... failed, reason: getaddrinfo ENOTFOUND registry.npmjs.org
-npm ERR! audit endpoint returned an error
+$ npm run db:generate
+PASS_DB_GENERATE
+No schema changes, nothing to migrate 😴
+
+$ npm run db:migrate
+PASS_DB_MIGRATE
+[✓] migrations applied successfully!
 ```
+
+```bash
+$ psql "$DATABASE_URL" -c "\dt"
+public | prompt_versions | table | annawaterhouse
+public | prompts         | table | annawaterhouse
+public | test_runs       | table | annawaterhouse
+public | users           | table | annawaterhouse
+```
+
+### D. Security/Hardening/Testing Scans
 
 ```bash
 $ rg -n "correlation|request-id|x-correlation|x-request-id|trace" src
-No correlation/request-id propagation code found in src/.
-```
+NO_MATCH: correlation/request-id
 
-```bash
 $ rg -n "logger|pino|winston|structured|redact|mask|sanitize" src
-No structured logger/redaction implementation found in src/.
+NO_MATCH: structured-logger/redaction
+
+$ find . -maxdepth 5 -type f \( -name '*.spec.ts' -o -name '*.test.ts' -o -name '*.spec.tsx' -o -name '*.test.tsx' \) -not -path './node_modules/*'
+# no output
+
+$ find . -maxdepth 5 -type f -iname '*seed*' -not -path './node_modules/*'
+# no output
 ```
 
 ```bash
-$ find . -maxdepth 4 -type f \( -name '*.spec.ts' -o -name '*.test.ts' -o -name '*.spec.tsx' -o -name '*.test.tsx' \) ...
-No test files found (*.spec|*.test).
+$ npm audit --json
+request to https://registry.npmjs.org/-/npm/v1/security/audits/quick failed, reason: getaddrinfo ENOTFOUND registry.npmjs.org
 ```
 
-```bash
-$ find . -maxdepth 5 -type f -iname '*seed*' ...
-No seed script files found.
-```
-
-```bash
-$ rg --files src | rg "repository|repositories|repo"
-No typed repository helper files found in src/.
-```
-
-```bash
-$ [ -d drizzle ] && find drizzle ... || echo "No drizzle/ migration output directory found."
-No drizzle/ migration output directory found.
-```
-
-```bash
-$ find src/app/api -maxdepth 4 -type f | sort
-src/app/api/auth/[...nextauth]/route.ts
-```
-
-### D. Key File Evidence References
+### E. Key File Evidence References
 - `src/env.ts:3` to `src/env.ts:25`
 - `src/lib/api-response.ts:1` to `src/lib/api-response.ts:25`
 - `src/auth/options.ts:14` to `src/auth/options.ts:74`
-- `src/middleware.ts:1` to `src/middleware.ts:57`
+- `src/proxy.ts:1` to `src/proxy.ts:57`
 - `src/db/schema.ts:14` to `src/db/schema.ts:88`
-- `package.json:6` to `package.json:14`
-- `PRD.md:125` to `PRD.md:151`
-- `FINAL_HARDENING_PROMPT.md:7` to `FINAL_HARDENING_PROMPT.md:44`
+- `drizzle/0000_melted_solo.sql`
+- `drizzle/meta/_journal.json`
+- `PRD.md:1`
+- `PRD.md:225`
+- `docs/FINAL_HARDENING_PROMPT.md:7` to `docs/FINAL_HARDENING_PROMPT.md:44`

@@ -18,5 +18,5 @@ Single-user. Next.js 16 + TypeScript + Tailwind + Drizzle + PostgreSQL + Auth.js
 - DB schema: src/db/schema.ts
 - API response helpers: src/lib/api-response.ts
 - Auth config: src/auth/options.ts
-- Route protection: src/middleware.ts
+- Route protection: src/proxy.ts
 - App entry: src/app/app/page.tsx
