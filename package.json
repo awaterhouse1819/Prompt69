@@ -19,6 +19,9 @@
     "start": "next start",
     "prelint": "npm run runtime:check",
     "lint": "eslint . --max-warnings=0",
+    "pretest": "npm run runtime:check",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "pretypecheck": "npm run runtime:check",
     "typecheck": "tsc --noEmit",
     "predb:generate": "npm run runtime:check",
@@ -26,7 +29,9 @@
     "predb:migrate": "npm run runtime:check",
     "db:migrate": "drizzle-kit migrate",
     "predb:studio": "npm run runtime:check",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "preseed": "npm run runtime:check",
+    "seed": "node scripts/seed.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
@@ -55,6 +60,8 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.0.18"
   }
 }

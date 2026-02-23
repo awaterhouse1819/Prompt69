@@ -9,7 +9,7 @@ Ship v1: prompt CRUD, immutable versions, test runs against OpenAI, and run hist
 - Drizzle migration artifacts are generated (`drizzle/0000_melted_solo.sql` + `drizzle/meta/_journal.json`) and local migrate/apply succeeds.
 - Runtime checks under Node `20.19.0`: `lint`, `typecheck`, and `build` pass.
 - Local PostgreSQL environment is now aligned (`annawaterhouse` role + `prompt69` database), and migrations apply successfully.
-- Remaining feature gaps: Milestone 4 P1/P2 quality gates; default shell runtime is still Node 18.
+- Remaining feature gaps: finalize release-readiness verification/reporting and clean up default shell runtime (still Node 18).
 
 ## Milestone 0: Environment Unblock (Do First)
 - [x] `.env.local` exists and baseline keys are set (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`)
@@ -51,14 +51,14 @@ P0 (release-blocking):
 - [x] Add structured logger with sensitive-field redaction (replace ad-hoc `console.*`)
 
 P1 (pre-release security/reliability):
-- [ ] Add centralized API error mapper/wrapper to enforce `{ data, error }` contract
-- [ ] Explicitly harden Auth.js session/cookie settings in `src/auth/options.ts`
-- [ ] Add migration rollback guidance doc
+- [x] Add centralized API error mapper/wrapper to enforce `{ data, error }` contract
+- [x] Explicitly harden Auth.js session/cookie settings in `src/auth/options.ts`
+- [x] Add migration rollback guidance doc
 
 P2 (quality gate completion):
-- [ ] Add API contract tests
-- [ ] Add concurrency tests for versions/test-runs flows
-- [ ] Add seed script and typed repository helper layer
+- [x] Add API contract tests
+- [x] Add concurrency tests for versions/test-runs flows
+- [x] Add seed script and typed repository helper layer
 
 ## Done (Verified)
 - [x] Next.js 16 + TypeScript + Tailwind + shadcn/ui baseline

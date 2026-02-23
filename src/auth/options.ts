@@ -10,11 +10,48 @@ const credentialsSchema = z.object({
 });
 
 const SINGLE_USER_ID = "00000000-0000-0000-0000-000000000001";
+const IS_PRODUCTION = env.NODE_ENV === "production";
+const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
+const SESSION_UPDATE_AGE_SECONDS = 60 * 60;
 
 export const authOptions: NextAuthOptions = {
   secret: env.AUTH_SECRET,
+  useSecureCookies: IS_PRODUCTION,
   session: {
     strategy: "jwt",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    updateAge: SESSION_UPDATE_AGE_SECONDS,
+  },
+  jwt: {
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  },
+  cookies: {
+    sessionToken: {
+      name: IS_PRODUCTION ? "__Secure-next-auth.session-token" : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: IS_PRODUCTION,
+      },
+    },
+    callbackUrl: {
+      name: IS_PRODUCTION ? "__Secure-next-auth.callback-url" : "next-auth.callback-url",
+      options: {
+        sameSite: "lax",
+        path: "/",
+        secure: IS_PRODUCTION,
+      },
+    },
+    csrfToken: {
+      name: IS_PRODUCTION ? "__Host-next-auth.csrf-token" : "next-auth.csrf-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: IS_PRODUCTION,
+      },
+    },
   },
   pages: {
     signIn: "/login",

@@ -5,8 +5,8 @@ import { auth } from "@/auth";
 import { db } from "@/db/client";
 import { promptVersions, prompts } from "@/db/schema";
 import { apiError, apiOk } from "@/lib/api-response";
-import { getOrCreateCorrelationIdFromHeaders } from "@/lib/correlation-id";
-import { logger } from "@/lib/logger";
+import { withApiHandler } from "@/lib/api-route";
+import { deletePromptById, updatePromptById } from "@/repositories";
 
 const promptIdSchema = z.string().uuid();
 
@@ -37,169 +37,160 @@ async function getPromptId(context: RouteContext) {
 }
 
 export async function GET(request: Request, context: RouteContext) {
-  const correlationId = getOrCreateCorrelationIdFromHeaders(request.headers);
-  const session = await auth();
+  return withApiHandler(
+    request,
+    async ({ correlationId }) => {
+      const session = await auth();
 
-  if (!session?.user) {
-    return apiError("UNAUTHORIZED", "Authentication required", 401, { correlationId });
-  }
+      if (!session?.user) {
+        return apiError("UNAUTHORIZED", "Authentication required", 401, { correlationId });
+      }
 
-  const promptId = await getPromptId(context);
+      const promptId = await getPromptId(context);
 
-  if (!promptId) {
-    return apiError("INVALID_INPUT", "Invalid prompt id", 400, { correlationId });
-  }
+      if (!promptId) {
+        return apiError("INVALID_INPUT", "Invalid prompt id", 400, { correlationId });
+      }
 
-  try {
-    const [promptWithVersion] = await db
-      .select({
-        id: prompts.id,
-        title: prompts.title,
-        type: prompts.type,
-        tags: prompts.tags,
-        currentVersionId: prompts.currentVersionId,
-        createdAt: prompts.createdAt,
-        updatedAt: prompts.updatedAt,
-        currentVersionRowId: promptVersions.id,
-        currentVersionNumber: promptVersions.versionNumber,
-        currentVersionContent: promptVersions.content,
-        currentVersionNotes: promptVersions.notes,
-        currentVersionCreatedAt: promptVersions.createdAt,
-      })
-      .from(prompts)
-      .leftJoin(promptVersions, eq(prompts.currentVersionId, promptVersions.id))
-      .where(eq(prompts.id, promptId));
+      const [promptWithVersion] = await db
+        .select({
+          id: prompts.id,
+          title: prompts.title,
+          type: prompts.type,
+          tags: prompts.tags,
+          currentVersionId: prompts.currentVersionId,
+          createdAt: prompts.createdAt,
+          updatedAt: prompts.updatedAt,
+          currentVersionRowId: promptVersions.id,
+          currentVersionNumber: promptVersions.versionNumber,
+          currentVersionContent: promptVersions.content,
+          currentVersionNotes: promptVersions.notes,
+          currentVersionCreatedAt: promptVersions.createdAt,
+        })
+        .from(prompts)
+        .leftJoin(promptVersions, eq(prompts.currentVersionId, promptVersions.id))
+        .where(eq(prompts.id, promptId));
 
-    if (!promptWithVersion) {
-      return apiError("NOT_FOUND", "Prompt not found", 404, { correlationId });
-    }
+      if (!promptWithVersion) {
+        return apiError("NOT_FOUND", "Prompt not found", 404, { correlationId });
+      }
 
-    return apiOk(
-      {
-      prompt: {
-        id: promptWithVersion.id,
-        title: promptWithVersion.title,
-        type: promptWithVersion.type,
-        tags: promptWithVersion.tags,
-        currentVersionId: promptWithVersion.currentVersionId,
-        createdAt: promptWithVersion.createdAt,
-        updatedAt: promptWithVersion.updatedAt,
-      },
-      currentVersion: promptWithVersion.currentVersionRowId
-        ? {
-            id: promptWithVersion.currentVersionRowId,
-            versionNumber: promptWithVersion.currentVersionNumber,
-            content: promptWithVersion.currentVersionContent,
-            notes: promptWithVersion.currentVersionNotes,
-            createdAt: promptWithVersion.currentVersionCreatedAt,
-          }
-        : null,
-      },
-      { correlationId },
-    );
-  } catch (error) {
-    logger.error("Failed to load prompt", { correlationId, error });
-    return apiError("INTERNAL_ERROR", "Failed to load prompt", 500, { correlationId });
-  }
+      return apiOk(
+        {
+          prompt: {
+            id: promptWithVersion.id,
+            title: promptWithVersion.title,
+            type: promptWithVersion.type,
+            tags: promptWithVersion.tags,
+            currentVersionId: promptWithVersion.currentVersionId,
+            createdAt: promptWithVersion.createdAt,
+            updatedAt: promptWithVersion.updatedAt,
+          },
+          currentVersion: promptWithVersion.currentVersionRowId
+            ? {
+                id: promptWithVersion.currentVersionRowId,
+                versionNumber: promptWithVersion.currentVersionNumber,
+                content: promptWithVersion.currentVersionContent,
+                notes: promptWithVersion.currentVersionNotes,
+                createdAt: promptWithVersion.currentVersionCreatedAt,
+              }
+            : null,
+        },
+        { correlationId },
+      );
+    },
+    {
+      route: "/api/prompts/[id]",
+      method: "GET",
+    },
+  );
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const correlationId = getOrCreateCorrelationIdFromHeaders(request.headers);
-  const session = await auth();
+  return withApiHandler(
+    request,
+    async ({ correlationId }) => {
+      const session = await auth();
 
-  if (!session?.user) {
-    return apiError("UNAUTHORIZED", "Authentication required", 401, { correlationId });
-  }
+      if (!session?.user) {
+        return apiError("UNAUTHORIZED", "Authentication required", 401, { correlationId });
+      }
 
-  const promptId = await getPromptId(context);
+      const promptId = await getPromptId(context);
 
-  if (!promptId) {
-    return apiError("INVALID_INPUT", "Invalid prompt id", 400, { correlationId });
-  }
+      if (!promptId) {
+        return apiError("INVALID_INPUT", "Invalid prompt id", 400, { correlationId });
+      }
 
-  let rawBody: unknown;
+      let rawBody: unknown;
 
-  try {
-    rawBody = await request.json();
-  } catch {
-    return apiError("INVALID_JSON", "Request body must be valid JSON", 400, { correlationId });
-  }
+      try {
+        rawBody = await request.json();
+      } catch {
+        return apiError("INVALID_JSON", "Request body must be valid JSON", 400, { correlationId });
+      }
 
-  const parsed = updatePromptSchema.safeParse(rawBody);
+      const parsed = updatePromptSchema.safeParse(rawBody);
 
-  if (!parsed.success) {
-    return apiError("INVALID_INPUT", "Invalid prompt payload", 400, { correlationId });
-  }
+      if (!parsed.success) {
+        return apiError("INVALID_INPUT", "Invalid prompt payload", 400, { correlationId });
+      }
 
-  const updateValues: {
-    title?: string;
-    tags?: string[];
-    updatedAt: Date;
-  } = {
-    updatedAt: new Date(),
-  };
+      const updateValues: {
+        title?: string;
+        tags?: string[];
+      } = {};
 
-  if (parsed.data.title !== undefined) {
-    updateValues.title = parsed.data.title;
-  }
+      if (parsed.data.title !== undefined) {
+        updateValues.title = parsed.data.title;
+      }
 
-  if (parsed.data.tags !== undefined) {
-    updateValues.tags = Array.from(new Set(parsed.data.tags));
-  }
+      if (parsed.data.tags !== undefined) {
+        updateValues.tags = Array.from(new Set(parsed.data.tags));
+      }
 
-  try {
-    const [updatedPrompt] = await db
-      .update(prompts)
-      .set(updateValues)
-      .where(eq(prompts.id, promptId))
-      .returning({
-        id: prompts.id,
-        title: prompts.title,
-        type: prompts.type,
-        tags: prompts.tags,
-        currentVersionId: prompts.currentVersionId,
-        createdAt: prompts.createdAt,
-        updatedAt: prompts.updatedAt,
-      });
+      const updatedPrompt = await updatePromptById(promptId, updateValues);
 
-    if (!updatedPrompt) {
-      return apiError("NOT_FOUND", "Prompt not found", 404, { correlationId });
-    }
+      if (!updatedPrompt) {
+        return apiError("NOT_FOUND", "Prompt not found", 404, { correlationId });
+      }
 
-    return apiOk(updatedPrompt, { correlationId });
-  } catch (error) {
-    logger.error("Failed to update prompt", { correlationId, error, promptId });
-    return apiError("INTERNAL_ERROR", "Failed to update prompt", 500, { correlationId });
-  }
+      return apiOk(updatedPrompt, { correlationId });
+    },
+    {
+      route: "/api/prompts/[id]",
+      method: "PATCH",
+    },
+  );
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const correlationId = getOrCreateCorrelationIdFromHeaders(request.headers);
-  const session = await auth();
+  return withApiHandler(
+    request,
+    async ({ correlationId }) => {
+      const session = await auth();
 
-  if (!session?.user) {
-    return apiError("UNAUTHORIZED", "Authentication required", 401, { correlationId });
-  }
+      if (!session?.user) {
+        return apiError("UNAUTHORIZED", "Authentication required", 401, { correlationId });
+      }
 
-  const promptId = await getPromptId(context);
+      const promptId = await getPromptId(context);
 
-  if (!promptId) {
-    return apiError("INVALID_INPUT", "Invalid prompt id", 400, { correlationId });
-  }
+      if (!promptId) {
+        return apiError("INVALID_INPUT", "Invalid prompt id", 400, { correlationId });
+      }
 
-  try {
-    const [deletedPrompt] = await db
-      .delete(prompts)
-      .where(eq(prompts.id, promptId))
-      .returning({ id: prompts.id });
+      const deletedPrompt = await deletePromptById(promptId);
 
-    if (!deletedPrompt) {
-      return apiError("NOT_FOUND", "Prompt not found", 404, { correlationId });
-    }
+      if (!deletedPrompt) {
+        return apiError("NOT_FOUND", "Prompt not found", 404, { correlationId });
+      }
 
-    return apiOk(deletedPrompt, { correlationId });
-  } catch (error) {
-    logger.error("Failed to delete prompt", { correlationId, error, promptId });
-    return apiError("INTERNAL_ERROR", "Failed to delete prompt", 500, { correlationId });
-  }
+      return apiOk(deletedPrompt, { correlationId });
+    },
+    {
+      route: "/api/prompts/[id]",
+      method: "DELETE",
+    },
+  );
 }
