@@ -7,7 +7,7 @@ Ship v1: prompt CRUD, immutable versions, test runs against OpenAI, and run hist
 - v1 scope from `PRD.md` is implemented: auth, prompt CRUD, immutable versions/restore, manual test runs, and run history.
 - Hardening milestones P0/P1/P2 are complete in code: correlation IDs, structured logging, API error mapping, session/cookie hardening, runbooks, tests, seed, and typed repositories.
 - Runtime workflow is documented and automated with `scripts/check-runtime.mjs` and `scripts/setup.mjs`.
-- Remaining closeout work is operational/documentary: final local DB-backed validation pass and final release-readiness report table refresh.
+- DB-backed validation has been re-run successfully (`npm run seed`, `npm test`) and audit evidence is refreshed.
 
 ## Milestone 0: Environment Unblock (Do First)
 - [x] `.env.local` exists and baseline keys are set (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`)
@@ -75,7 +75,7 @@ P2 (quality gate completion):
 - A/B compare UI
 
 ## Next Steps (Closeout)
-- [ ] Run `npm run seed` on a machine with local PostgreSQL access and capture output evidence.
-- [ ] Run `npm test` in the same DB-connected environment and confirm concurrency specs execute (not skipped).
-- [ ] Refresh `docs/AUDIT_REPORT.md` release-readiness table with final PASS/FAIL evidence references.
+- [x] Run `npm run seed` on a machine with local PostgreSQL access and capture output evidence.
+- [x] Run `npm test` in the same DB-connected environment and confirm concurrency specs execute (not skipped).
+- [x] Refresh `docs/AUDIT_REPORT.md` release-readiness table with final PASS/FAIL evidence references.
 - [ ] Final docs polish + tag/release workflow (if shipping immediately).

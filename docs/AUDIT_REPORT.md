@@ -16,7 +16,7 @@ Method used:
 
 ## Environment Snapshot
 - Branch: `main`
-- HEAD: `9617d16` (`docs: refresh setup guidance and closeout tracking`)
+- HEAD: `9351b34` (`docs: update audit release table with db test evidence`)
 - Remote: `origin https://github.com/awaterhouse1819/Prompt69.git`
 - Runtime note:
   - Default shell: `node v18.17.1`, `npm 10.5.2`
@@ -32,7 +32,7 @@ Baseline checks (Node 20.19.0):
 - `npm run db:generate`: **PASS** (`No schema changes, nothing to migrate`)
 - `npm run db:migrate`: **PASS**
 - `npm run seed`: **PASS** (DB-connected; idempotent seed upsert completed)
-- `npm test`: **FAIL** (DB-connected tests executed; concurrency suite ran with no skips but 1 assertion path failed due duplicate version insert race)
+- `npm test`: **PASS** (DB-connected; all suites passed, including concurrency flows with no skips)
 - `psql "$DATABASE_URL" -c "\\dt"`: **PASS** (4 tables present)
 - `npm audit --json`: **Blocked (Evidence Gap)** (`getaddrinfo ENOTFOUND registry.npmjs.org`)
 
@@ -51,17 +51,17 @@ Status criteria:
 - `Blocked (Evidence Gap)`: cannot verify due environment/tooling constraint.
 
 ## Executive Summary
-Overall release-readiness status: **NOT READY**.
+Overall release-readiness status: **READY (with external dependency-audit evidence gap)**.
 
 Findings summary (current):
 - Hardening release-readiness checks: **5 / 5 PASS** (table updated below with code/test/doc evidence).
-- Remaining release blocker: **concurrency regression under parallel version creation** (`npm test` failure in `tests/concurrency-flows.test.ts`).
-- Additional evidence gap remains for dependency audit due network restriction in this environment.
+- DB-backed validation: **PASS** (`npm run seed`, `npm test` with concurrency suite executed and passing).
+- Remaining evidence gap: dependency audit is still blocked by network restriction in this environment.
 
 Top current blockers:
-1. Fix `createNextPromptVersion` race handling to prevent duplicate `(prompt_id, version_number)` under concurrent writes.
-2. Re-run full test suite after repository-level concurrency fix and confirm green.
-3. Re-run `npm audit --json` in network-enabled environment and record triage.
+1. Re-run `npm audit --json` in network-enabled environment and record triage.
+2. Add CI gate for DB-backed concurrency tests to keep the race-condition fix enforced.
+3. Add targeted logger-redaction and auth cookie-attribute integration tests.
 
 ## Findings (Historical Snapshot, Superseded by Release Table)
 
@@ -290,22 +290,22 @@ The findings below were captured before the latest P0/P1/P2 hardening completion
 | Migration artifacts committed | **PASS** | `drizzle/0000_melted_solo.sql`, `drizzle/meta/0000_snapshot.json`, `drizzle/meta/_journal.json` tracked in git. | None. |
 | Rollback guidance documented | **PASS** | `docs/MIGRATION_ROLLBACK_GUIDANCE.md` is present and versioned. | Keep guidance updated with each migration strategy change. |
 | Contract test coverage | **PASS** | `tests/api-contract.test.ts`; `npm test` output shows all 4 contract tests passing. | Expand coverage as API surface grows. |
-| Concurrency test coverage | **FAIL** | `tests/concurrency-flows.test.ts` executed in DB-connected run (not skipped); one test failed with Postgres unique violation `prompt_versions_prompt_id_version_number_uniq`. | Fix repository concurrency control for version-number allocation and re-run tests to green. |
+| Concurrency test coverage | **PASS** | `tests/concurrency-flows.test.ts` executed in DB-connected run (not skipped); both concurrency tests now pass after per-prompt row locking in `createNextPromptVersion`. | Add CI enforcement for DB-backed concurrency suite. |
 | Phase-gate checklist linkage | **PASS** | PRD hardening-gate reference in `PRD.md`; implementation aligns with `docs/FINAL_HARDENING_PROMPT.md` release table items. | Consider CI enforcement as follow-up hardening. |
 
 ## Prioritized Remediation Plan
 
 1. **P0 (Release-blocking)**
-   - Fix concurrent version creation race (`createNextPromptVersion`) so parallel saves cannot collide on `(prompt_id, version_number)`.
-   - Re-run `npm test` with DB access and require clean pass for release.
+   - No open P0 items from the hardening gate checklist.
 
 2. **P1 (Pre-release quality/security)**
+   - Re-run `npm audit --json` in network-enabled environment and document triage.
    - Add targeted redaction tests for `src/lib/logger.ts`.
    - Add auth integration checks for cookie attributes.
 
 3. **P2 (Stability and maintainability)**
    - Add CI gate for DB-backed concurrency tests.
-   - Re-run dependency audit in network-enabled CI and track remediation.
+   - Add regression test case for high-contention prompt version creation (5+ concurrent writes).
 
 ## Evidence Appendix (Commands + Outputs)
 
@@ -313,7 +313,7 @@ The findings below were captured before the latest P0/P1/P2 hardening completion
 
 ```bash
 $ git rev-parse --short HEAD && git branch --show-current && git status -sb
-9617d16
+9351b34
 main
 ## main...origin/main
 ```
@@ -350,17 +350,15 @@ $ npm run seed
 ```bash
 $ npm test
 ✓ tests/api-contract.test.ts (4 tests)
-❯ tests/concurrency-flows.test.ts (2 tests | 1 failed)
-  × creates sequential prompt versions under concurrent saves
-  ✓ persists concurrent test runs and completion updates
-Test Files  1 failed | 1 passed (2)
-Tests  1 failed | 5 passed (6)
+✓ tests/concurrency-flows.test.ts (2 tests)
+Test Files  2 passed (2)
+Tests  6 passed (6)
 ```
 
 ```bash
-$ npm test (failure detail)
-duplicate key value violates unique constraint "prompt_versions_prompt_id_version_number_uniq"
-Key (prompt_id, version_number)=(..., 1) already exists.
+$ npm test (concurrency focus)
+✓ creates sequential prompt versions under concurrent saves
+  ✓ persists concurrent test runs and completion updates
 ```
 
 ### D. Security/Hardening/Testing Scans
@@ -386,6 +384,7 @@ request to https://registry.npmjs.org/-/npm/v1/security/audits/quick failed, rea
 - `src/lib/api-route.ts:1`
 - `src/lib/logger.ts:1`
 - `src/auth/options.ts:1`
+- `src/repositories/prompt-versions-repository.ts:82`
 - `tests/api-contract.test.ts:33`
 - `tests/concurrency-flows.test.ts:33`
 - `drizzle/0000_melted_solo.sql`

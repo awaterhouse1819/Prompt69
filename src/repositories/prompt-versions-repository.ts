@@ -1,4 +1,4 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { promptVersions, prompts } from "@/db/schema";
@@ -80,76 +80,68 @@ export async function findPromptVersionForPrompt(promptId: string, versionId: st
 }
 
 export async function createNextPromptVersion(promptId: string, content: string, notes: string | null) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const createdVersion = await db.transaction(async (tx) => {
-        const [promptRow] = await tx
-          .select({ id: prompts.id })
-          .from(prompts)
-          .where(eq(prompts.id, promptId));
+  try {
+    const createdVersion = await db.transaction(async (tx) => {
+      // Serialize version writes per prompt to prevent duplicate (prompt_id, version_number).
+      const lockResult = await tx.execute(
+        sql`select id from prompts where id = ${promptId}::uuid for update`,
+      );
 
-        if (!promptRow) {
-          return null;
-        }
-
-        const [latestVersion] = await tx
-          .select({ versionNumber: promptVersions.versionNumber })
-          .from(promptVersions)
-          .where(eq(promptVersions.promptId, promptId))
-          .orderBy(desc(promptVersions.versionNumber))
-          .limit(1);
-
-        const nextVersionNumber = (latestVersion?.versionNumber ?? 0) + 1;
-
-        const [insertedVersion] = await tx
-          .insert(promptVersions)
-          .values({
-            promptId,
-            versionNumber: nextVersionNumber,
-            content,
-            notes,
-          })
-          .returning({
-            id: promptVersions.id,
-            promptId: promptVersions.promptId,
-            versionNumber: promptVersions.versionNumber,
-            content: promptVersions.content,
-            notes: promptVersions.notes,
-            createdAt: promptVersions.createdAt,
-          });
-
-        if (!insertedVersion) {
-          throw new Error("Failed to insert prompt version");
-        }
-
-        await tx
-          .update(prompts)
-          .set({
-            currentVersionId: insertedVersion.id,
-            updatedAt: new Date(),
-          })
-          .where(eq(prompts.id, promptId));
-
-        return insertedVersion;
-      });
-
-      if (!createdVersion) {
-        return { status: "not_found" as const, version: null };
+      if (lockResult.rows.length === 0) {
+        return null;
       }
 
-      return { status: "created" as const, version: createdVersion };
-    } catch (error) {
-      if (isUniqueViolation(error) && attempt < 2) {
-        continue;
+      const [latestVersion] = await tx
+        .select({ versionNumber: promptVersions.versionNumber })
+        .from(promptVersions)
+        .where(eq(promptVersions.promptId, promptId))
+        .orderBy(desc(promptVersions.versionNumber))
+        .limit(1);
+
+      const nextVersionNumber = (latestVersion?.versionNumber ?? 0) + 1;
+
+      const [insertedVersion] = await tx
+        .insert(promptVersions)
+        .values({
+          promptId,
+          versionNumber: nextVersionNumber,
+          content,
+          notes,
+        })
+        .returning({
+          id: promptVersions.id,
+          promptId: promptVersions.promptId,
+          versionNumber: promptVersions.versionNumber,
+          content: promptVersions.content,
+          notes: promptVersions.notes,
+          createdAt: promptVersions.createdAt,
+        });
+
+      if (!insertedVersion) {
+        throw new Error("Failed to insert prompt version");
       }
 
-      if (isUniqueViolation(error)) {
-        return { status: "conflict" as const, version: null };
-      }
+      await tx
+        .update(prompts)
+        .set({
+          currentVersionId: insertedVersion.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(prompts.id, promptId));
 
-      throw error;
+      return insertedVersion;
+    });
+
+    if (!createdVersion) {
+      return { status: "not_found" as const, version: null };
     }
-  }
 
-  return { status: "conflict" as const, version: null };
+    return { status: "created" as const, version: createdVersion };
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return { status: "conflict" as const, version: null };
+    }
+
+    throw error;
+  }
 }
