@@ -1,7 +1,7 @@
 # Prompt69 Repository History
 
 ## Document Metadata
-- Generated at: 2026-02-23 (refreshed + doc sync)
+- Generated at: 2026-02-23 (documentation refresh after hardening completion)
 - Generated from workspace: `/Users/annawaterhouse/Desktop/Code/Prompt69/Prompt-Library`
 - Scope: Repository history from origin + current workspace snapshot + chronological log of user prompts and assistant final responses.
 - Transcript rule: Includes user prompts and assistant **final** outputs only (no intermediary progress updates).
@@ -10,6 +10,10 @@
 
 | SHA | Date (Local) | Author | Branch Context | Files Changed |
 |---|---|---|---|---|
+| `5c73314` | February 23, 2026 11:39:39 EST | `Anna Waterhouse <annawaterhouse05@gmail.com>` | `main` / `origin/main` | 22 files changed, 2872 insertions, 719 deletions (`feat: complete hardening P1/P2 with tests and repos`) |
+| `ce0bcaa` | February 23, 2026 11:11:50 EST | `Anna Waterhouse <annawaterhouse05@gmail.com>` | `main` / `origin/main` | 13 files changed, 453 insertions, 100 deletions (`chore: complete P0 hardening and update history`) |
+| `a54ebc6` | February 23, 2026 10:56:58 EST | `Anna Waterhouse <annawaterhouse05@gmail.com>` | `main` / `origin/main` | 14 files changed, 1563 insertions, 23 deletions (`feat: implement prompt CRUD, versioning, and test runs`) |
+| `6935dfd` | February 23, 2026 10:14:49 EST | `Anna Waterhouse <annawaterhouse05@gmail.com>` | `main` / `origin/main` | 15 files changed, 1274 insertions, 413 deletions (`chore: add runtime setup workflow and refresh project docs`) |
 | `79fa727` | February 22, 2026 18:01:10 EST | `Anna Waterhouse <annawaterhouse05@gmail.com>` | `main` / `origin/main` | 5 files changed, 29 insertions, 7 deletions (`audit deprecations fixed`) |
 | `04cecc9` | February 22, 2026 17:36:49 EST | `Anna Waterhouse <annawaterhouse05@gmail.com>` | `main` / `origin/main` | 8 files changed, 1354 insertions, 980 deletions (`Agent Planning Workflow Created`) |
 | `da220d7` | February 22, 2026 16:53:18 EST | `Anna Waterhouse <annawaterhouse05@gmail.com>` | `main` / `origin/main` | 4 files changed, 509 insertions, 1 deletion (`docs: add audit report and hardening gate docs; update PRD and repo history`) |
@@ -26,18 +30,9 @@ Additional git state at generation time:
 ## Current Workspace Snapshot
 
 Working tree snapshot (`git status -sb`) at generation time:
-- `D .eslintrc.json`
-- `M AGENTS.md`
-- `M PRD.md`
 - `M README.md`
-- `M docs/AUDIT_REPORT.md`
-- `M package-lock.json`
-- `M package.json`
 - `M plans.md`
 - `M repo-history.md`
-- `?? drizzle/`
-- `?? eslint.config.mjs`
-- `?? scripts/`
 
 ## Chronological Session Log
 
@@ -1304,3 +1299,42 @@ Reference point for this delta:
 - `?? docs/BACKUP_RESTORE_RUNBOOK.md`
 - `?? src/lib/correlation-id.ts`
 - `?? src/lib/logger.ts`
+
+---
+
+## Delta Update Since Last `repo-history.md` Update (2026-02-23, P1/P2 completion + docs refresh)
+
+Reference point for this delta:
+- Previous delta capture section: `## Delta Update Since Last repo-history.md Update (2026-02-23, feature milestone commit + P0 hardening)`.
+
+### Git Events Since Last Update
+- `2026-02-23` — Commit `ce0bcaa` created on `main` and pushed to `origin/main`:
+  - `chore: complete P0 hardening and update history`
+  - Consolidates P0 hardening work and documentation sync.
+- `2026-02-23` — Commit `5c73314` created on `main` and pushed to `origin/main`:
+  - `feat: complete hardening P1/P2 with tests and repos`
+  - Adds API wrapper/error mapping enforcement, session/cookie hardening, rollback guidance, contract tests, concurrency tests, seed script, and typed repositories.
+
+### Documentation Refresh In This Cycle
+- `README.md` updated with:
+  - prerequisites/env setup
+  - quick start sequence (`setup`, `seed`, `dev`)
+  - validation command list and DB connectivity test note
+  - ops/hardening document references.
+- `plans.md` updated with:
+  - completion-oriented current snapshot
+  - Milestone 0 infra commit item checked complete
+  - explicit closeout checklist for local DB-backed verification and final release report refresh.
+- `repo-history.md` updated with:
+  - latest commit timeline rows
+  - current workspace snapshot
+  - this delta section.
+
+### Validation Status for This Docs Cycle
+- Documentation-only edits in this cycle.
+- Runtime/build/test commands were not re-executed in this cycle; latest functional status is tracked under commit `5c73314`.
+
+### Current Working Tree Snapshot (at this Delta Capture)
+- `M README.md`
+- `M plans.md`
+- `M repo-history.md`

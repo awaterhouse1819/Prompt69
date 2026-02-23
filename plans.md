@@ -4,12 +4,10 @@
 Ship v1: prompt CRUD, immutable versions, test runs against OpenAI, and run history.
 
 ## Current Snapshot
-- App foundation is implemented: Next.js app shell, credentials auth, route protection, env validation, Drizzle schema.
-- API surface now includes auth + prompt CRUD/version APIs + test-run APIs (`src/app/api/auth/[...nextauth]/route.ts`, `src/app/api/prompts/route.ts`, `src/app/api/prompts/[id]/route.ts`, `src/app/api/prompts/[id]/versions/route.ts`, `src/app/api/prompts/[id]/restore/route.ts`, `src/app/api/test-runs/route.ts`).
-- Drizzle migration artifacts are generated (`drizzle/0000_melted_solo.sql` + `drizzle/meta/_journal.json`) and local migrate/apply succeeds.
-- Runtime checks under Node `20.19.0`: `lint`, `typecheck`, and `build` pass.
-- Local PostgreSQL environment is now aligned (`annawaterhouse` role + `prompt69` database), and migrations apply successfully.
-- Remaining feature gaps: finalize release-readiness verification/reporting and clean up default shell runtime (still Node 18).
+- v1 scope from `PRD.md` is implemented: auth, prompt CRUD, immutable versions/restore, manual test runs, and run history.
+- Hardening milestones P0/P1/P2 are complete in code: correlation IDs, structured logging, API error mapping, session/cookie hardening, runbooks, tests, seed, and typed repositories.
+- Runtime workflow is documented and automated with `scripts/check-runtime.mjs` and `scripts/setup.mjs`.
+- Remaining closeout work is operational/documentary: final local DB-backed validation pass and final release-readiness report table refresh.
 
 ## Milestone 0: Environment Unblock (Do First)
 - [x] `.env.local` exists and baseline keys are set (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`)
@@ -19,7 +17,7 @@ Ship v1: prompt CRUD, immutable versions, test runs against OpenAI, and run hist
 - [x] Confirm local PostgreSQL auth/user configuration for `DATABASE_URL`
 - [x] Run `npm run db:generate` to create `drizzle/` migrations
 - [x] Run `npm run db:migrate` and verify tables are created
-- [ ] Commit infrastructure baseline changes (`drizzle/*`, `eslint.config.mjs`, `package.json`, `package-lock.json`, plan/docs deltas)
+- [x] Commit infrastructure baseline changes (`drizzle/*`, `eslint.config.mjs`, `package.json`, `package-lock.json`, plan/docs deltas)
 - [x] Add runtime preflight guidance so contributors use `.nvmrc` Node version before checks (`scripts/check-runtime.mjs` + npm pre* hooks + README)
 - [x] Add one-step `npm run setup` for runtime precheck + env sanity + DB migrate (`scripts/setup.mjs`)
 
@@ -75,3 +73,9 @@ P2 (quality gate completion):
 - Queue/worker architecture, email, analytics, object storage
 - Multi-user/team features
 - A/B compare UI
+
+## Next Steps (Closeout)
+- [ ] Run `npm run seed` on a machine with local PostgreSQL access and capture output evidence.
+- [ ] Run `npm test` in the same DB-connected environment and confirm concurrency specs execute (not skipped).
+- [ ] Refresh `docs/AUDIT_REPORT.md` release-readiness table with final PASS/FAIL evidence references.
+- [ ] Final docs polish + tag/release workflow (if shipping immediately).
