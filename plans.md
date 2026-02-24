@@ -78,5 +78,5 @@ P2 (quality gate completion):
 - [x] Run `npm run seed` on a machine with local PostgreSQL access and capture output evidence.
 - [x] Run `npm test` in the same DB-connected environment and confirm concurrency specs execute (not skipped).
 - [x] Refresh `docs/AUDIT_REPORT.md` release-readiness table with final PASS/FAIL evidence references.
-- [ ] Triage `npm audit --json` findings (14 high / 4 moderate) with upgrade-or-waiver decisions.
+- [ ] Triage remaining `npm audit --json` findings (4 moderate / 0 high / 0 critical) with upgrade-or-waiver decisions.
 - [ ] Final docs polish + tag/release workflow (if shipping immediately).

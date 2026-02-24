@@ -34,7 +34,7 @@ Baseline checks (Node 20.19.0):
 - `npm run seed`: **PASS** (DB-connected; idempotent seed upsert completed)
 - `npm test`: **PASS** (DB-connected; all suites passed, including concurrency flows with no skips)
 - `psql "$DATABASE_URL" -c "\\dt"`: **PASS** (4 tables present)
-- `npm audit --json`: **COMPLETE** (`18` total vulnerabilities: `14 high`, `4 moderate`, `0 critical`; primarily in dev-tooling dependency chains)
+- `npm audit --json`: **COMPLETE** (`4` total vulnerabilities: `4 moderate`, `0 high`, `0 critical`; all in `drizzle-kit`/`esbuild-kit` dev-tooling chain)
 
 ## Severity & Status Model
 Severity criteria:
@@ -56,10 +56,10 @@ Overall release-readiness status: **READY (with dependency triage follow-ups)**.
 Findings summary (current):
 - Hardening release-readiness checks: **5 / 5 PASS** (table updated below with code/test/doc evidence).
 - DB-backed validation: **PASS** (`npm run seed`, `npm test` with concurrency suite executed and passing).
-- Dependency audit now has evidence; follow-up remediation/waiver decisions remain for non-critical findings.
+- Dependency audit now has evidence and no high/critical findings; remaining moderate findings are dev-tooling only.
 
 Top current blockers:
-1. Triage `npm audit --json` findings (14 high / 4 moderate), with owner decisions for patch, upgrade, or risk acceptance.
+1. Triage remaining moderate `npm audit --json` findings (4 moderate, 0 high/critical) with upgrade-or-waiver decisions.
 2. Add CI gate for DB-backed concurrency tests to keep the race-condition fix enforced.
 3. Add targeted logger-redaction and auth cookie-attribute integration tests.
 
@@ -246,16 +246,17 @@ The findings below were captured before the latest P0/P1/P2 hardening completion
 - Status: **Open**
 - Finding: Dependency vulnerabilities are present in current lockfile graph and require triage decisions.
 - Evidence:
-  - `npm audit --json` completed successfully (Node `20.19.0`) with:
-    - `14 high`
+  - Applied dependency-hardening adjustments:
+    - removed placeholder dependency `node.js@0.0.1-security`
+  - `npm audit --json` now reports:
+    - `0 high`
     - `4 moderate`
     - `0 critical`
-  - High-severity chain is dominated by `minimatch` advisories through `eslint`/plugin/transitive tooling packages.
-  - Moderate-severity chain includes `esbuild` via `drizzle-kit` transitive tooling dependencies.
+  - Remaining findings are limited to `drizzle-kit` / `@esbuild-kit/*` / `esbuild` advisory chain.
 - Risk/Impact:
-  - Dev and CI environments may carry known vulnerable toolchain dependencies until upgrades/waivers are applied.
+  - Dev and CI environments still carry moderate-severity toolchain findings until `drizzle-kit` path is upgraded or waived.
 - Required Remediation:
-  - Create a dependency triage record per finding cluster: upgrade path, compatibility impact, and explicit waiver rationale where needed.
+  - Create a dependency triage record for remaining `drizzle-kit` chain findings: upgrade path, compatibility impact, and explicit waiver rationale if retained.
   - Re-run `npm audit --json` after dependency changes and attach delta evidence.
 - Suggested Owner: Platform
 - Suggested Verification Test:
@@ -305,7 +306,7 @@ The findings below were captured before the latest P0/P1/P2 hardening completion
    - No open P0 items from the hardening gate checklist.
 
 2. **P1 (Pre-release quality/security)**
-   - Triage current `npm audit --json` findings and execute approved upgrade/waiver decisions.
+   - Triage remaining `npm audit --json` moderate findings and execute approved upgrade/waiver decisions.
    - Add targeted redaction tests for `src/lib/logger.ts`.
    - Add auth integration checks for cookie attributes.
 
@@ -387,13 +388,13 @@ $ npm audit --json
       "info": 0,
       "low": 0,
       "moderate": 4,
-      "high": 14,
+      "high": 0,
       "critical": 0,
-      "total": 18
+      "total": 4
     }
   }
 }
-# notable chains: minimatch -> eslint/* (high), esbuild -> drizzle-kit (moderate)
+# remaining chain: drizzle-kit -> @esbuild-kit/* -> esbuild (moderate)
 ```
 
 ### E. Key File Evidence References
